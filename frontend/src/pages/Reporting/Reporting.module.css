@@ -1,0 +1,128 @@
+.periodBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.pchip {
+  background: var(--s3);
+  border: 1.5px solid var(--brd);
+  color: var(--txt2);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--sans);
+}
+.pchip:hover { border-color: var(--blue); color: var(--blue); }
+.pchipOn { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
+
+.divSel {
+  border: 1.5px solid var(--brd);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: var(--sans);
+  background: #fff;
+}
+
+.fluxTabs {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.fxTab {
+  background: var(--s3);
+  border: 1.5px solid var(--brd);
+  color: var(--txt2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--sans);
+}
+.fxTabOn { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
+
+.rGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.rCard {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.rCard h4 { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+.rCard p  { font-size: 11px; color: var(--mut); margin-bottom: 12px; }
+
+.bcRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bcLbl { font-size: 11px; font-weight: 600; width: 64px; flex-shrink: 0; }
+
+.bcBarW {
+  flex: 1;
+  background: var(--s3);
+  border-radius: 99px;
+  height: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bcBar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .6s;
+  min-width: 30px;
+}
+
+.bcVal {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.divGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.divStat {
+  background: var(--s2);
+  border: 1.5px solid var(--brd);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.divStatName { font-size: 11px; font-weight: 700; color: var(--txt2); margin-bottom: 6px; }
+.divStatV    { font-size: 20px; font-weight: 800; }
+.divStatSub  { font-size: 10px; color: var(--mut); }
+
+.loadWrap {
+  display: flex;
+  justify-content: center;
+  padding: 60px;
+}

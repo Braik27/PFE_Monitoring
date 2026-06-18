@@ -1,0 +1,358 @@
+/* Page split — fond marine, carte sombre à droite (réf. maquette Flux Monitor) */
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr min(480px, 44vw);
+  background: radial-gradient(1200px 800px at 20% 20%, #0c1a3a 0%, #050b1a 55%, #030612 100%);
+  color: #e2e8f0;
+}
+
+@media (max-width: 960px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    padding: 28px 24px 12px !important;
+    min-height: auto !important;
+  }
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px clamp(28px, 5vw, 64px);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 70% 80%, rgba(201, 169, 110, 0.08) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+.heroTop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.brandRow {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.brandRow em {
+  font-style: italic;
+  font-weight: 800;
+}
+
+.brandDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-left: 1px;
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.headline {
+  position: relative;
+  font-size: clamp(28px, 3.6vw, 40px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fff;
+  margin: 0 0 20px;
+  max-width: 520px;
+}
+
+.accent {
+  color: var(--gold);
+}
+
+.lead {
+  position: relative;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #94a3b8;
+  max-width: 480px;
+  margin: 0 0 36px;
+}
+
+.tags {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.tagDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+/* Colonne droite */
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(3, 6, 18, 0.85) 100%);
+  border-left: 1px solid rgba(51, 65, 85, 0.35);
+}
+
+@media (max-width: 960px) {
+  .right {
+    border-left: none;
+    border-top: 1px solid rgba(51, 65, 85, 0.35);
+  }
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  border-radius: 16px;
+  padding: 32px 28px 28px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.cardBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.cardBrandText {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.cardBrandText em {
+  font-style: italic;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+}
+
+.sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 20px;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(71, 85, 105, 0.7), transparent);
+  margin-bottom: 22px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fieldLbl {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.92);
+  border-radius: 10px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.inputWrap:focus-within {
+  border-color: var(--blu2);
+  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.15);
+}
+
+.inputIcon {
+  font-size: 16px;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.inputWrap input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 12px 4px;
+  font-size: 14px;
+  color: var(--txt);
+  outline: none;
+}
+
+.togglePwd {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 15px;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+.togglePwd:hover {
+  opacity: 0.9;
+}
+
+.forgotRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+
+.forgot {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.forgot:hover {
+  text-decoration: underline;
+}
+
+.submitBtn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #4A6CF7 0%, #2C3E8C 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(44, 62, 140, 0.35);
+  transition: transform 0.12s, filter 0.12s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ssoBlock {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.ssoHint {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.ssoBtn {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+}
+
+.ssoBtn:hover {
+  background: rgba(51, 65, 85, 0.6);
+}
+
+.errBanner {
+  font-size: 12px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.5;
+}

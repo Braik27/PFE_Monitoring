@@ -1,0 +1,90 @@
+# Azure Pipeline — Flux Monitor
+# Builds the React frontend, then builds & pushes the Docker image to ACR
+
+trigger:
+  - master
+
+resources:
+  - repo: self
+
+variables:
+  dockerRegistryServiceConnection: "5dfb7dae-1f64-4b57-8256-7633afaff32c"
+  imageRepository: "pfeamani"
+  containerRegistry: "flasktraineracr.azurecr.io"
+  dockerfilePath: "backend/Dockerfile"
+  tag: "$(Build.BuildId)"
+  vmImageName: "ubuntu-latest"
+
+stages:
+  # ── Stage 1: Build React Frontend ───────────────────────────────
+  - stage: Frontend
+    displayName: Frontend Build
+    jobs:
+      - job: BuildFrontend
+        displayName: Build React app
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            displayName: Install Node.js
+            inputs:
+              versionSpec: "20.x"
+
+          - task: Cache@2
+            displayName: Cache npm dependencies
+            inputs:
+              key: 'npm | "$(Agent.OS)" | frontend/package-lock.json'
+              path: frontend/node_modules
+              cacheHitVar: NPM_CACHE_RESTORED
+
+          - script: npm ci
+            displayName: npm install
+            workingDirectory: frontend
+            condition: ne(variables.NPM_CACHE_RESTORED, 'true')
+
+          - script: npm run build
+            displayName: Build frontend
+            workingDirectory: frontend
+
+          - script: npx tsc --noEmit
+            displayName: TypeScript check
+            workingDirectory: frontend
+
+          - publish: frontend/dist
+            displayName: Publish frontend build artifact
+            artifact: frontend-dist
+
+  # ── Stage 2: Build & Push Docker Image ──────────────────────────
+  - stage: Docker
+    displayName: Docker Build & Push
+    dependsOn: Frontend
+    jobs:
+      - job: BuildDocker
+        displayName: Build and push image
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - checkout: self
+
+          - download: current
+            displayName: Download frontend artifact
+            artifact: frontend-dist
+
+          - script: |
+              mkdir -p frontend/dist
+              cp -r "$(Pipeline.Workspace)/frontend-dist/"* frontend/dist/
+            displayName: Inject pre-built frontend into build context
+
+          - task: Docker@2
+            displayName: Build and push to ACR
+            inputs:
+              command: buildAndPush
+              repository: $(imageRepository)
+              dockerfile: $(dockerfilePath)
+              buildContext: "$(Build.SourcesDirectory)"
+              containerRegistry: $(dockerRegistryServiceConnection)
+              tags: |
+                $(tag)
+                v1

@@ -1,0 +1,102 @@
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filters select {
+  border: 1.5px solid var(--brd);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 13px;
+  font-family: var(--sans);
+  background: #fff;
+}
+
+.alertCard {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-left: 4px solid var(--brd);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.alertCard:hover { border-color: var(--blue); box-shadow: var(--sh2); }
+
+.alertIcon {
+  width: 38px; height: 38px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.detailPanel {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 18px;
+  animation: fi .18s ease;
+}
+
+@keyframes fi {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.detailKpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.detailKpi {
+  background: #fff;
+  border: 1px solid var(--brd);
+  border-radius: var(--r2);
+  padding: 12px;
+  box-shadow: var(--sh);
+}
+
+.iaBox {
+  background: linear-gradient(135deg, #f5f3ff, #eff6ff);
+  border: 1.5px solid var(--pur-md);
+  border-radius: var(--r);
+  padding: 16px;
+  margin-top: 12px;
+}
+.iaBox h4 { font-size: 13px; font-weight: 800; color: var(--purple); margin-bottom: 10px; }
+
+.trkItem {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--s3);
+  font-size: 12px;
+  align-items: center;
+}
+.trkItem:last-child { border-bottom: none; }
+
+.trkDot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+  flex-shrink: 0;
+}

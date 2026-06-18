@@ -1,0 +1,169 @@
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.form {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 22px;
+  position: sticky;
+  top: 72px;
+}
+
+.form h3 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fluxInfo {
+  background: var(--s2);
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r2);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.keyBadge {
+  display: inline-block;
+  background: var(--blu-lt);
+  color: var(--blue);
+  border: 1px solid var(--blu-md);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 5px;
+  margin: 2px;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--brd);
+  background: var(--s2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  color: var(--txt2);
+}
+.chip:hover { border-color: var(--blue); color: var(--blue); }
+.chipOn { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
+
+.uploadGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.uzone {
+  border: 2px dashed var(--brd);
+  border-radius: var(--r2);
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  background: #fff;
+}
+.uzone:hover, .uzDrag { border-color: var(--blue) !important; background: var(--blu-lt) !important; }
+.uzFilled { border-color: var(--green) !important; background: var(--grn-lt) !important; }
+
+.results { min-height: 200px; }
+
+.resultEmpty {
+  text-align: center;
+  padding: 60px 20px;
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Identity card ── */
+.idCard {
+  background: linear-gradient(135deg, #0B1420, #162030);
+  color: #fff;
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.idHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.idBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: .5px;
+  background: rgba(201,169,110,.2);
+  color: var(--gold-md);
+  border: 1px solid rgba(201,169,110,.3);
+  margin-left: 8px;
+}
+
+.idGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.idItem label {
+  font-size: 9px;
+  color: rgba(255,255,255,.4);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  display: block;
+  margin-bottom: 3px;
+}
+.idItem span { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.9); }
+
+.idHealth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 12px 18px;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  margin-bottom: 16px;
+}

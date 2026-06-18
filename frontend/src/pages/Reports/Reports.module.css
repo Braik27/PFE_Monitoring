@@ -1,0 +1,127 @@
+.section {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.section h3 {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.reportCard {
+  background: var(--s2);
+  border: 1.5px solid var(--brd);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reportTitle { font-size: 13px; font-weight: 700; }
+.reportMeta  { font-size: 11px; color: var(--mut); }
+
+.inlineRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inlineInput {
+  border: 1.5px solid var(--brd);
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--txt);
+}
+
+.inlineSelect {
+  border: 1.5px solid var(--brd);
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-family: var(--sans);
+  background: #fff;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ── CustomerBalance ── */
+.cbSection {
+  background: #fff;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.cbHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cbKpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cbKpi {
+  background: var(--s2);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.cbLegend {
+  background: var(--blu-lt);
+  border: 1px solid var(--blu-md);
+  border-radius: 9px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--blue);
+}
+
+.cbTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cbTable th {
+  background: var(--s2);
+  color: var(--mut);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1.5px solid var(--brd);
+}
+.cbTable td { padding: 7px 10px; border-bottom: 1px solid var(--brd); vertical-align: middle; }
+.cbTable tr:hover td { background: var(--s2); }
+
+.pillInt   { background: var(--grn-lt); color: var(--green); font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+.pillRej   { background: var(--red-lt); color: var(--red);   font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+.pillOther { background: var(--orn-lt); color: var(--orange); font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }

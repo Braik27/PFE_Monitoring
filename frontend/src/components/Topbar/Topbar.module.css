@@ -1,0 +1,23 @@
+.topbar {
+  height: 60px;
+  background: var(--surf);
+  border-bottom: 1px solid var(--brd);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  letter-spacing: -.2px;
+  color: var(--txt);
+  font-family: var(--serif);
+  font-style: italic;
+}

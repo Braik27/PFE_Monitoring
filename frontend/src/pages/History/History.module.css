@@ -1,0 +1,15 @@
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filters select {
+  border: 1.5px solid var(--brd);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 13px;
+  font-family: var(--sans);
+  background: #fff;
+}

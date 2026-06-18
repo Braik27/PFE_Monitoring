@@ -1,0 +1,179 @@
+/* ═══════════════════════════════════════════════════════
+   FLUX MONITOR — Design System (refined for ABA Luxury)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --bg: #F5F4F1;
+  --surf: #FFFFFF;
+  --s2: #FAFAF8;
+  --s3: #EFEEEB;
+  --brd: #E5E3DC;
+  --txt: #0B1420;
+  --txt2: #5A6577;
+  --mut: #9CA3AF;
+  --gold: #C9A96E;
+  --gold-lt: #F5EFE2;
+  --gold-md: #D4B981;
+  --blue: #2C3E8C;
+  --blu2: #4A6CF7;
+  --blu-lt: #EEF1F9;
+  --blu-md: #BFC8E6;
+  --green: #059669;
+  --grn-lt: #ECFDF5;
+  --grn-md: #6EE7B7;
+  --red: #DC2626;
+  --red-lt: #FEF2F2;
+  --red-md: #FCA5A5;
+  --orange: #D97706;
+  --orn-lt: #FFFBEB;
+  --orn-md: #FCD34D;
+  --purple: #7C3AED;
+  --pur-lt: #F5F3FF;
+  --pur-md: #DDD6FE;
+  --accent: #4A6CF7;
+  --sb: 264px;
+  --r: 12px;
+  --r2: 8px;
+  --sh: 0 1px 3px rgba(0,0,0,.05);
+  --sh2: 0 8px 32px rgba(11,20,32,.10);
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'JetBrains Mono', 'DM Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--txt);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--blu-md);
+  color: var(--blue);
+}
+
+/* ── Global table resets ── */
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--s2); }
+th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--mut); border-bottom: 1.5px solid var(--brd); }
+td { padding: 8px 12px; border-bottom: 1px solid var(--s3); vertical-align: top; }
+tr:hover td { background: var(--s2); }
+tr:last-child td { border-bottom: none; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 8px 18px; border-radius: 8px; border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .2s; display: inline-flex; align-items: center;
+  gap: 6px; font-family: var(--sans); text-decoration: none;
+  letter-spacing: .01em;
+}
+.bp { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(44,62,140,.25); }
+.bp:hover { background: #1a2b6d; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(44,62,140,.35); }
+.bg-btn { background: var(--surf); color: var(--txt2); border: 1.5px solid var(--brd); }
+.bg-btn:hover { border-color: var(--gold); color: var(--gold); }
+.bd { background: var(--red-lt); color: var(--red); border: 1px solid var(--red-md); }
+.bgreen { background: var(--green); color: #fff; }
+.bgreen:hover { background: #047857; }
+.bpurple { background: var(--purple); color: #fff; }
+.bpurple:hover { background: #6d28d9; }
+.borange { background: var(--orange); color: #fff; }
+.borange:hover { background: #b45309; }
+.bgold { background: var(--gold); color: #fff; }
+.bgold:hover { background: var(--gold-md); }
+.bsm { padding: 6px 14px; font-size: 12px; }
+.bxs { padding: 4px 10px; font-size: 11px; }
+
+/* ── Badges ── */
+.bdg { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.b-r { background: var(--red-lt); color: var(--red); border: 1px solid var(--red-md); }
+.b-o { background: var(--orn-lt); color: var(--orange); border: 1px solid var(--orn-md); }
+.b-g { background: var(--grn-lt); color: var(--green); border: 1px solid var(--grn-md); }
+.b-b { background: var(--blu-lt); color: var(--blue); border: 1px solid var(--blu-md); }
+.b-p { background: var(--pur-lt); color: var(--purple); border: 1px solid var(--pur-md); }
+.b-x { background: var(--s3); color: var(--mut); border: 1px solid var(--brd); }
+.b-gold { background: var(--gold-lt); color: #8B7535; border: 1px solid var(--gold-md); }
+
+/* ── Spinner ── */
+.spin {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.25);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin .6s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Animations ── */
+@keyframes fi { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+/* ── Form groups ── */
+.fg { margin-bottom: 14px; }
+.fg label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--txt2); margin-bottom: 6px; }
+.fg input, .fg select, .fg textarea {
+  width: 100%; border: 1.5px solid var(--brd); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px; font-family: var(--sans);
+  color: var(--txt); background: var(--surf); transition: border .2s, box-shadow .2s;
+}
+.fg input:focus, .fg select:focus { outline: none; border-color: var(--blu2); box-shadow: 0 0 0 3px rgba(74,108,247,.1); }
+
+/* ── Val box (mono) ── */
+.val-box {
+  font-family: var(--mono); font-size: 11px; background: var(--s3);
+  padding: 2px 6px; border-radius: 4px; display: inline-block;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Empty state ── */
+.empty { text-align: center; padding: 60px 20px; }
+.empty-ico { font-size: 40px; margin-bottom: 12px; opacity: .6; }
+.empty-txt { font-size: 15px; font-weight: 700; color: var(--txt2); margin-bottom: 4px; }
+.empty-sub { font-size: 13px; color: var(--mut); }
+
+/* ── Toasts container ── */
+.toasts {
+  position: fixed; bottom: 24px; right: 24px; z-index: 999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--surf); border: 1.5px solid var(--brd); border-radius: 10px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 13px; box-shadow: var(--sh2); animation: fi .2s ease; max-width: 360px;
+}
+
+/* ── Overlay / Modal ── */
+.ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal { background: var(--surf); border-radius: var(--r); width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; box-shadow: var(--sh2); display: flex; flex-direction: column; }
+.mhead { padding: 18px 20px 14px; border-bottom: 1.5px solid var(--brd); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surf); z-index: 1; }
+.mclose { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--mut); line-height: 1; padding: 4px 8px; border-radius: 6px; }
+.mclose:hover { background: var(--s3); }
+.mbody { padding: 18px 20px; flex: 1; }
+.mfoot { padding: 14px 20px; border-top: 1.5px solid var(--brd); display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0; background: var(--surf); }
+
+/* ── sblk (bloc section) ── */
+.sblk { background: var(--surf); border: 1.5px solid var(--brd); border-radius: var(--r); overflow: hidden; margin-bottom: 16px; }
+.sblk-h { padding: 14px 18px; border-bottom: 1.5px solid var(--brd); display: flex; align-items: center; justify-content: space-between; background: var(--s2); }
+
+/* ── Gold accent divider ── */
+.gold-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-md), transparent);
+  border: none;
+  margin: 0;
+}
