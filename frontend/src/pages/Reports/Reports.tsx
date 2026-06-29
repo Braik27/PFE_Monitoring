@@ -73,8 +73,8 @@ export default function Reports() {
     }
   }
 
-  const DivSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
-    <select value={value} onChange={e => onChange(e.target.value)} className={styles.inlineSelect}>
+  const DivSelect = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) => (
+    <select value={value} onChange={e => onChange(e.target.value)} className={styles.inlineSelect} aria-label={label ?? "Division"}>
       <option value="">Toutes divisions</option>
       <option value="KWT">🇰🇼 KWT</option>
       <option value="DOHA">🇶🇦 DOHA</option>
@@ -95,8 +95,8 @@ export default function Reports() {
             <div className={styles.reportTitle}>📅 Rapport journalier</div>
             <div className={styles.reportMeta}>1 onglet par jour — format client</div>
             <div className={styles.inlineRow}>
-              <input type="date" value={rptDate} onChange={e => setRptDate(e.target.value)} className={styles.inlineInput} />
-              <DivSelect value={rptDiv} onChange={setRptDiv} />
+              <input type="date" value={rptDate} onChange={e => setRptDate(e.target.value)} className={styles.inlineInput} aria-label="Date du rapport journalier" />
+              <DivSelect value={rptDiv} onChange={setRptDiv} label="Division du rapport journalier" />
             </div>
             <div className={styles.cardActions}>
               <button className="btn bp bsm" disabled={downloading === 'daily'} onClick={() => download('daily')}>
@@ -113,8 +113,8 @@ export default function Reports() {
             <div className={styles.reportTitle}>📊 Rapport mensuel</div>
             <div className={styles.reportMeta}>Un onglet par jour du mois</div>
             <div className={styles.inlineRow}>
-              <input type="month" value={rptMonth} onChange={e => setRptMonth(e.target.value)} className={styles.inlineInput} />
-              <DivSelect value={rptMonthDiv} onChange={setRptMonthDiv} />
+              <input type="month" value={rptMonth} onChange={e => setRptMonth(e.target.value)} className={styles.inlineInput} aria-label="Mois du rapport mensuel" />
+              <DivSelect value={rptMonthDiv} onChange={setRptMonthDiv} label="Division du rapport mensuel" />
             </div>
             <div className={styles.cardActions}>
               <button className="btn bpurple bsm" disabled={downloading === 'monthly'} onClick={() => download('monthly')}>
@@ -135,7 +135,7 @@ export default function Reports() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input type="date" value={cbDate} onChange={e => setCbDate(e.target.value)} className={styles.inlineInput} />
+            <input type="date" value={cbDate} onChange={e => setCbDate(e.target.value)} className={styles.inlineInput} aria-label="Date du rapport CustomerBalance" />
             <button className="btn bp bsm" onClick={loadCBReport}>🔄 Actualiser</button>
             <button className="btn bg-btn bsm" disabled={downloading === 'cb-csv'} onClick={() => download('cb-csv')}>
               {downloading === 'cb-csv' ? <span className="spin" /> : '⬇ CSV'}

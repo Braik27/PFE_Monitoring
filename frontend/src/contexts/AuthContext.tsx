@@ -21,11 +21,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { mutateAsync: logoutMutate } = useLogoutMutation()
 
   const fetchUser = async () => {
-    const { data } = await api.get('/api/me')
-    const u = normalizeApiUser(data as Record<string, unknown>)
+    const { data } = await api.get('/api/session')
+    const u = normalizeApiUser(data?.user as Record<string, unknown> | undefined)
     if (u) {
       setUser(u)
       sessionStorage.setItem('user', JSON.stringify(u))
+    } else {
+      setUser(null)
+      sessionStorage.removeItem('user')
     }
     return u
   }
@@ -34,11 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const { data } = await api.get('/api/me')
-        const u = normalizeApiUser(data as Record<string, unknown>)
+        const { data } = await api.get('/api/session')
+        const u = normalizeApiUser(data?.user as Record<string, unknown> | undefined)
         if (!cancelled && u) {
           setUser(u)
           sessionStorage.setItem('user', JSON.stringify(u))
+        } else if (!cancelled) {
+          setUser(null)
+          sessionStorage.removeItem('user')
         }
       } catch {
         if (!cancelled) {

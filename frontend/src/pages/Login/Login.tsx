@@ -1,52 +1,23 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import api from '../../lib/api'
 import styles from './Login.module.css'
-
-const KC_ERRORS: Record<string, string> = {
-  keycloak_disabled: 'Connexion SSO indisponible.',
-  keycloak_denied: 'Connexion SSO annulée.',
-  keycloak_state: 'Session SSO invalide — réessayez.',
-  keycloak_no_code: 'Réponse Keycloak incomplète.',
-  keycloak_token: 'Échange de jeton Keycloak échoué.',
-  keycloak_no_user: 'Profil Keycloak incomplet.',
-  keycloak_unknown_user: 'Ce compte n’est pas enregistré dans Flux Monitor (créez l’utilisateur avec le même identifiant).',
-}
 
 export default function Login() {
   const { login, user, isLoading: authLoading } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [kcEnabled, setKcEnabled] = useState(false)
-
-  const nextUrl = searchParams.get('next') || '/'
-  const urlError = searchParams.get('error')
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(nextUrl === '/login' ? '/' : nextUrl, { replace: true })
+      navigate('/', { replace: true })
     }
-  }, [authLoading, user, navigate, nextUrl])
-
-  useEffect(() => {
-    api.get('/api/auth/keycloak/status')
-      .then((r) => setKcEnabled(!!r.data?.enabled))
-      .catch(() => setKcEnabled(false))
-  }, [])
-
-  useEffect(() => {
-    if (urlError && KC_ERRORS[urlError]) {
-      showToast(KC_ERRORS[urlError], 'error')
-      navigate('/login', { replace: true })
-    }
-  }, [urlError, navigate, showToast])
+  }, [authLoading, user, navigate])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -57,17 +28,13 @@ export default function Login() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate(nextUrl)
+      navigate('/')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       showToast(msg ?? 'Identifiants incorrects', 'error')
     } finally {
       setLoading(false)
     }
-  }
-
-  const startKeycloak = () => {
-    window.location.href = '/api/auth/keycloak/login'
   }
 
   return (
@@ -159,15 +126,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {kcEnabled && (
-            <div className={styles.ssoBlock}>
-              <div className={styles.ssoHint}>Ou avec votre compte d’entreprise (Keycloak)</div>
-              <button type="button" className={styles.ssoBtn} onClick={startKeycloak}>
-                Connexion SSO Keycloak
-              </button>
-            </div>
-          )}
 
           <div className={styles.footer}>
             TimSoft Group © {new Date().getFullYear()} — Solutions Business Intelligence

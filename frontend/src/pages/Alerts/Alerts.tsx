@@ -197,11 +197,11 @@ export default function Alerts() {
     <>
           {/* Filters */}
       <div className={styles.filters}>
-        <select value={fluxFilter} onChange={e => setFluxFilter(e.target.value)}>
+        <select value={fluxFilter} onChange={e => setFluxFilter(e.target.value)} aria-label="Filtrer par flux">
           <option value="">Tous les flux</option>
           {fluxOptions.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="Filtrer par statut">
           <option value="">Tous statuts</option>
           <option value="NEW">🟡 Nouveau</option>
           <option value="ACKNOWLEDGED">🔵 Pris en charge</option>

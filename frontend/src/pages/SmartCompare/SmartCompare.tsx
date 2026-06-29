@@ -119,7 +119,8 @@ function DropZone({ file, onFile, label, inputRef }: {
     >
       <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls"
         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-        onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }}
+        aria-label="Importer un fichier de comparaison" />
       <div style={{ fontSize: 32, marginBottom: 8, color: ok ? 'var(--green)' : 'var(--mut)' }}>
         {ok ? '✅' : '📄'}
       </div>
@@ -388,7 +389,8 @@ export default function SmartCompare() {
                         <td>
                           <select value={m.oracle_col ?? ''} onChange={e => updateMapping(i, e.target.value || null)}
                             style={{ border: '1.5px solid var(--brd)', borderRadius: 6,
-                              padding: '4px 8px', fontSize: 12, background: '#fff' }}>
+                              padding: '4px 8px', fontSize: 12, background: '#fff' }}
+                            aria-label={`Mappage colonne Oracle pour ${m.cegid_col}`}>
                             <option value="">— non mappé —</option>
                             {(preview.cols_oracle ?? []).map(c => (
                               <option key={c.nom} value={c.nom}>{c.nom}</option>
@@ -404,6 +406,7 @@ export default function SmartCompare() {
                         <td>
                           <input type="checkbox" checked={keyCols.has(m.cegid_col)}
                             onChange={() => toggleKey(m.cegid_col)}
+                            aria-label={`Colonne clé : ${m.cegid_col}`}
                             style={{ accentColor: 'var(--green)', width: 15, height: 15 }} />
                         </td>
                       </tr>

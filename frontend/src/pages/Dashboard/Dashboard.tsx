@@ -291,7 +291,7 @@ export default function Dashboard() {
     try {
       const [statsRes, histRes] = await Promise.all([
         api.get('/api/stats'),
-        api.get('/api/history', { params: { limit: 200 } }),
+       api.get('/api/history/latest'),
       ])
       const cfgs: FluxCfg[] = Array.isArray(statsRes.data) ? statsRes.data : []
       setFluxCfgs(cfgs)

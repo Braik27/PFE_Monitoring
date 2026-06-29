@@ -259,6 +259,7 @@ export default function Assistant() {
               ref={inputRef}
               className={styles.inputBox}
               placeholder="Posez une question… (Entrée pour envoyer, Maj+Entrée pour saut de ligne)"
+              aria-label="Question pour l'assistant"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}

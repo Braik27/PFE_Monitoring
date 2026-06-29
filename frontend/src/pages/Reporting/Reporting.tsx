@@ -72,7 +72,7 @@ export default function Reporting() {
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select value={divFilter} onChange={e => setDivFilter(e.target.value)} className={styles.divSel}>
+          <select value={divFilter} onChange={e => setDivFilter(e.target.value)} className={styles.divSel} aria-label="Filtrer par division">
             <option value="">Toutes divisions</option>
             <option value="KSA">🇸🇦 KSA</option>
             <option value="KWT">🇰🇼 KWT</option>

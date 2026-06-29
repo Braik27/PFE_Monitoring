@@ -39,11 +39,11 @@ export default function History() {
   return (
     <>
           <div className={styles.filters}>
-        <select value={fluxFilter} onChange={e => setFluxFilter(e.target.value)}>
+        <select value={fluxFilter} onChange={e => setFluxFilter(e.target.value)} aria-label="Filtrer par flux">
           <option value="">Tous les flux</option>
           {fluxOptions.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
-        <select value={divFilter} onChange={e => setDivFilter(e.target.value)}>
+        <select value={divFilter} onChange={e => setDivFilter(e.target.value)} aria-label="Filtrer par division">
           <option value="">Toutes divisions</option>
           <option value="KSA">KSA</option>
           <option value="KWT">KWT</option>
