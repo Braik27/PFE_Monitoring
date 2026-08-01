@@ -8,7 +8,7 @@ console.error = (...args: unknown[]) => {
     if (a instanceof Error) return a.message
     return ''
   }).join(' ')
-  if (msg.includes('ECONNABORTED')) return
+  if (msg.includes('ECONNABORTED') || msg.includes('ECONNRESET')) return
   return originalError.apply(console, args as any[])
 }
 
@@ -42,6 +42,7 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        timeout: 120000,
       },
       '/ws': {
         target: 'ws://127.0.0.1:8000',
@@ -50,7 +51,7 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('error', (err) => {
             const code = (err as NodeJS.ErrnoException).code
-            if (code === 'ECONNABORTED' || code === 'ECONNREFUSED') return
+            if (code === 'ECONNABORTED' || code === 'ECONNREFUSED' || code === 'ECONNRESET') return
             console.error('ws proxy error:', err)
           })
           proxy.on('proxyReqWs', (_req) => {})
@@ -61,7 +62,7 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
-      '/alert': {
+      '/alert/': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

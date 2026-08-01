@@ -1,0 +1,519 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fi .3s ease-out;
+}
+
+/* ── Top controls ── */
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt2);
+  width: 16px;
+  height: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  font-size: 13px;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r2);
+  background: var(--surf);
+  color: var(--txt);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.searchInput:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(44, 62, 140, 0.1);
+}
+
+.rightControls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Toggle switch styling */
+.toggleWrapper {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggleTrack {
+  width: 48px;
+  height: 24px;
+  border-radius: 12px;
+  background: #cbd5e1;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.toggleTrackActive {
+  background: var(--blue);
+}
+
+.toggleThumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.toggleThumbActive {
+  transform: translateX(24px);
+}
+
+.notificationBtn {
+  background: var(--surf);
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r2);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  color: var(--txt2);
+  transition: all 0.2s;
+}
+
+.notificationBtn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 1.5px solid var(--surf);
+}
+
+/* ── KPI Row ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpiCard {
+  background: var(--surf);
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--sh);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kpiIconBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.trendBadge {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 2px 8px;
+}
+
+.trendUp {
+  background: var(--grn-lt);
+  color: var(--green);
+}
+
+.trendDown {
+  background: var(--red-lt);
+  color: var(--red);
+}
+
+.kpiValue {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--txt);
+  line-height: 1.2;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  color: var(--txt2);
+  font-weight: 600;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Themes colors */
+.bgBlue { background: var(--blu-lt); color: var(--blue); }
+.bgGreen { background: var(--grn-lt); color: var(--green); }
+.bgOrange { background: var(--orn-lt); color: var(--orange); }
+.bgPurple { background: var(--pur-lt); color: var(--purple); }
+
+/* ── Content Grid ── */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surf);
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r);
+  padding: 20px;
+  box-shadow: var(--sh);
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--txt);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  background: var(--s3);
+  color: var(--txt2);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.select {
+  border: 1.5px solid var(--brd);
+  border-radius: var(--r2);
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--surf);
+  color: var(--txt2);
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ── PDF Reports List ── */
+.listWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  background: var(--surf);
+  border: 1px solid var(--brd);
+  border-radius: var(--r2);
+  padding: 10px 14px;
+  transition: all 0.2s;
+}
+
+.listItem:hover {
+  border-color: var(--blue);
+  transform: translateX(2px);
+  background: var(--s2);
+}
+
+.itemIconBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--blu-lt);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.itemDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--txt);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.itemMeta {
+  font-size: 11px;
+  color: var(--txt2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.itemDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brd);
+}
+
+.itemActions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--txt2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: var(--s3);
+  color: var(--blue);
+}
+
+/* ── Circular Gauge ── */
+.gaugeContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 16px;
+}
+
+.gaugeOuter {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.gaugeInner {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: var(--surf);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.gaugeVal {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--txt);
+  line-height: 1.1;
+}
+
+.gaugeLbl {
+  font-size: 9px;
+  color: var(--txt2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ── Bar Chart ── */
+.chartContainer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 110px;
+  padding: 16px 8px 8px;
+  position: relative;
+  margin-top: 10px;
+}
+
+.chartBarWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+}
+
+.chartBarTrack {
+  width: 18px;
+  height: 80px;
+  background: var(--s3);
+  border-radius: 9px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chartBarFill {
+  width: 100%;
+  border-radius: 9px;
+  background: #fcd34d; /* light gold */
+  transition: height 0.5s ease-out;
+}
+
+.chartBarFillActive {
+  background: var(--orange);
+}
+
+.chartBarValue {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--txt2);
+  line-height: 1;
+}
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--mut);
+  font-weight: 700;
+  padding: 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Console Terminal ── */
+.consoleCard {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+.consoleTitle {
+  color: #38bdf8;
+  font-family: var(--mono);
+}
+
+.consoleBody {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: var(--r2);
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: #38bdf8;
+  min-height: 120px;
+  max-height: 180px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.consoleLine {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.consolePrompt {
+  color: #38bdf8;
+  font-weight: 800;
+  user-select: none;
+}
+
+.consoleText {
+  color: #e2e8f0;
+}
+
+.consoleTextSuccess {
+  color: #4ade80;
+}
+
+.consoleTextWarn {
+  color: #fbbf24;
+}
+
+.loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 12px;
+  color: var(--txt2);
+}

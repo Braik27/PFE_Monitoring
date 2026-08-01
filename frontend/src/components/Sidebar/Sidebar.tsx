@@ -11,6 +11,7 @@ import {
   Search,
   TrendingUp,
   Users,
+  Activity,
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -43,6 +44,7 @@ const IA_ITEMS: NavItem[] = [
 const ADMIN_ITEMS: NavItem[] = [
   { id: 'flux-admin', path: '/flux-admin', icon: Database, label: 'Gestion des flux', adminOnly: true },
   { id: 'users', path: '/users', icon: Users, label: 'Utilisateurs', adminOnly: true },
+  { id: 'monitoring', path: '/monitoring', icon: Activity, label: 'Monitoring', adminOnly: true },
 ]
 
 const ROLE_COLORS: Record<string, string> = {

@@ -96,7 +96,6 @@ function KCard({ bar, ico, icoBg, lbl, val, valColor, sub, prog }: any) {
 
 // ── Flux Card ──────────────────────────────────────────────────────────────
 function FluxCard({ cfg, row, onNavigate }: { cfg: FluxCfg; row: HistRow | null; onNavigate: () => void }) {
-  const [open, setOpen] = useState(false)
   const s      = row?.summary ?? {}
   const pairs  = s.pairs ?? []
   const conc   = s.concordance_moyenne ?? (pairs[0]?.concordance ?? 100)
@@ -217,54 +216,38 @@ function FluxCard({ cfg, row, onNavigate }: { cfg: FluxCfg; row: HistRow | null;
             ))}
           </div>
 
-          {/* ── Top colonnes erreur ── */}
-          {(pairs[0]?.top_error_columns ?? []).length > 0 && (
-            <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--brd)', background: 'var(--s2)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)' }}>Top colonnes en erreur : </span>
-              {(pairs[0].top_error_columns ?? []).map(c => (
-                <span key={c.column} className="bdg b-r" style={{ marginLeft: 4 }}>{c.column} <b>{c.n_errors}</b></span>
-              ))}
-            </div>
-          )}
-
-          {/* ── Bouton Voir détail / Alertes ── */}
-          <div style={{ padding: '12px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              className="btn bsm"
-              style={{ background: 'var(--red-lt)', color: 'var(--red)', border: '1px solid var(--red-md)' }}
-              onClick={() => window.location.href = '/alerts'}
-            >🔔 Voir les alertes</button>
-            <button className="btn bg-btn bsm" onClick={() => setOpen(o => !o)}>
-              {open ? '▲ Masquer détails' : '▼ Voir détails'}
-            </button>
-          </div>
-
-          {/* ── Détail anomalies ── */}
-          {open && (pairs[0]?.anomalies ?? []).length > 0 && (
-            <div style={{ padding: '0 20px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 8px' }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>🔍 Anomalies</span>
-                <span className="bdg b-x">{(pairs[0].anomalies ?? []).length} anomalie(s)</span>
+          {/* ── Top colonnes critique ── */}
+          {(() => {
+            const colMap: Record<string, number> = {}
+            for (const p of pairs) {
+              for (const c of p.top_error_columns ?? []) {
+                colMap[c.column] = (colMap[c.column] ?? 0) + c.n_errors
+              }
+            }
+            const sorted = Object.entries(colMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
+            if (sorted.length === 0) return null
+            return (
+              <div style={{ padding: '14px 18px', borderTop: '1px solid var(--brd)', background: 'var(--s2)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8 }}>🔴 Top colonnes critique</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {sorted.map(([col, n]) => (
+                    <div key={col} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'var(--surf)', border: '1px solid var(--brd)',
+                      borderRadius: 6, padding: '6px 10px', fontSize: 12,
+                    }}>
+                      <span style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--txt)' }}>{col}</span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 800, color: '#fff',
+                        background: n > 100 ? 'var(--red)' : n > 20 ? 'var(--orange)' : 'var(--blue)',
+                        borderRadius: 4, padding: '1px 6px', lineHeight: '16px',
+                      }}>{n.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table>
-                  <thead><tr><th>Sévérité</th><th>Type</th><th>Clé</th><th>Cegid</th><th>Oracle</th><th>Explication</th></tr></thead>
-                  <tbody>
-                    {(pairs[0].anomalies ?? []).slice(0, 15).map((a: any, i: number) => (
-                      <tr key={i}>
-                        <td><span className={`bdg ${a.severity === 'CRITIQUE' ? 'b-r' : 'b-o'}`}>{a.severity}</span></td>
-                        <td><span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{a.error_type}</span></td>
-                        <td style={{ fontSize: 11 }}>{Object.entries(a.key_values ?? {}).map(([k, v]) => `${k}=${v}`).join(' | ')}</td>
-                        <td><span className="val-box">{a.val_cegid ?? '—'}</span></td>
-                        <td><span className="val-box">{a.val_oracle ?? '—'}</span></td>
-                        <td style={{ fontSize: 11, color: 'var(--mut)' }}>{a.explication ?? ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </>
       )}
 
