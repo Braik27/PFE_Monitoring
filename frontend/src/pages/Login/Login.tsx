@@ -1,23 +1,38 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import api from '../../lib/api'
 import styles from './Login.module.css'
 
 export default function Login() {
   const { login, user, isLoading: authLoading } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [googleEnabled, setGoogleEnabled] = useState(false)
+
+  const next = (location.state as { from?: string })?.from || '/'
+
+  useEffect(() => {
+    api.get('/api/auth/config')
+      .then(r => setGoogleEnabled(!!r.data?.googleEnabled))
+      .catch(() => setGoogleEnabled(false))
+  }, [])
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/', { replace: true })
+      navigate(next, { replace: true })
     }
-  }, [authLoading, user, navigate])
+  }, [authLoading, user, navigate, next])
+
+  const handleGoogleLogin = () => {
+    window.location.href = '/api/auth/google'
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -28,7 +43,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate('/')
+      navigate(next)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       showToast(msg ?? 'Identifiants incorrects', 'error')
@@ -116,7 +131,11 @@ export default function Login() {
               </div>
             </div>
             <div className={styles.forgotRow}>
-              <a className={styles.forgot} href="#" onClick={(e) => e.preventDefault()}>
+              <a
+                className={styles.forgot}
+                href="#"
+                onClick={(e) => { e.preventDefault(); navigate('/forgot-password') }}
+              >
                 Mot de passe oublié ?
               </a>
             </div>
@@ -125,6 +144,18 @@ export default function Login() {
                 <>🚪 Se connecter</>
               )}
             </button>
+
+            {googleEnabled && (
+              <button
+                type="button"
+                className={styles.googleBtn}
+                onClick={handleGoogleLogin}
+                aria-label="Se connecter avec Google"
+              >
+                <span className={styles.googleIcon} aria-hidden>🅶</span>
+                Se connecter avec Google
+              </button>
+            )}
           </form>
 
           <div className={styles.footer}>

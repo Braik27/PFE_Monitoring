@@ -1,0 +1,112 @@
+.wrap {
+  background: var(--surf);
+  border: 1px solid var(--brd);
+  border-radius: var(--r);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--sh);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--txt);
+}
+
+.period {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpiCard {
+  background: var(--s1);
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.kpiIcon {
+  color: var(--mut);
+  margin-bottom: 6px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpiValue {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.kpiSub {
+  font-size: 11px;
+  color: var(--mut);
+  margin-top: 4px;
+}
+
+.trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.trendCard {
+  background: var(--s1);
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.trendTitle {
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--txt);
+}
+
+.trendRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--mut);
+}
+
+.trendRow strong {
+  color: var(--txt);
+}
+
+.loading,
+.error {
+  font-size: 13px;
+  color: var(--mut);
+  padding: 8px 0;
+}
+
+.error {
+  color: var(--red);
+}

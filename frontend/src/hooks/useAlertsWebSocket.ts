@@ -52,6 +52,7 @@ export function useAlertsWebSocket() {
           try {
             const data = JSON.parse(event.data)
             if (data.type === 'pong' || data.type === 'ping') return
+
             if (data.type === 'new_alert') {
               const fluxName = data.flux_name ?? 'Inconnu'
               const token = data.token ?? ''
@@ -62,10 +63,28 @@ export function useAlertsWebSocket() {
               showToast(
                 `${icon} Nouvelle alerte sur ${fluxName}${nCritiques > 0 ? ` (${nCritiques} critique${nCritiques > 1 ? 's' : ''})` : ''} — Token: ${token.slice(0, 8)}…`,
                 severity as any,
-                icon
+                icon,
+                () => {
+                  window.location.href = `/alerts?token=${token}`
+                }
               )
 
               window.dispatchEvent(new CustomEvent('new-alert', { detail: data }))
+            }
+
+            if (data.type === 'custom_notification') {
+              if (user && data.target_username === user.username) {
+                const icon = data.type_notif === 'escalation' ? '🔄' : '⚠️'
+                const toastType = data.type_notif === 'escalation' ? 'info' : 'warning'
+                showToast(
+                  data.message,
+                  toastType,
+                  icon,
+                  () => {
+                    window.location.href = `/alerts?token=${data.token}`
+                  }
+                )
+              }
             }
           } catch {
           }

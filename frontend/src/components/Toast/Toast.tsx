@@ -20,7 +20,12 @@ export default function ToastContainer() {
   return (
     <div className={styles.container}>
       {toasts.map((t) => (
-        <div key={t.id} className={styles.toast} style={{ borderLeftColor: COLORS[t.type] }}>
+        <div
+          key={t.id}
+          className={styles.toast}
+          style={{ borderLeftColor: COLORS[t.type], cursor: t.onClick ? 'pointer' : 'default' }}
+          onClick={t.onClick}
+        >
           <span style={{ fontSize: 18 }}>{t.icon ?? ICONS[t.type]}</span>
           <span>{t.message}</span>
         </div>

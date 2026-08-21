@@ -3,13 +3,11 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
   Bot,
-  Brain,
   Database,
   History,
   LayoutDashboard,
   LogOut,
   Search,
-  TrendingUp,
   Users,
   Activity,
 } from 'lucide-react'
@@ -31,13 +29,11 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'analyze', path: '/analyze', icon: Search, label: 'Analyser' },
-  { id: 'reporting', path: '/reporting', icon: TrendingUp, label: 'Reporting' },
   { id: 'history', path: '/history', icon: History, label: 'Historique' },
   { id: 'alerts', path: '/alerts', icon: Bell, label: 'Alertes', badgeId: 'alertBadge' },
 ]
 
 const IA_ITEMS: NavItem[] = [
-  { id: 'smart', path: '/smart', icon: Brain, label: 'Analyse IA' },
   { id: 'assistant', path: '/assistant', icon: Bot, label: 'Assistant IA' },
 ]
 

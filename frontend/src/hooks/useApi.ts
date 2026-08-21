@@ -217,7 +217,7 @@ export function useAlertTracking(token: string) {
 export function useResolveAlert(token: string) {
   return useMutation({
     mutationFn: async ({ comment }: { comment?: string }) => {
-      await api.patch(`/api/alerts/${token}/status`, { status: 'RESOLVED', comment })
+      await api.post(`/api/alerts/${token}/resolve`, { comment })
     },
   })
 }

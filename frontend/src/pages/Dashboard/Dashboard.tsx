@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Zap,
+  CheckCircle,
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  ShoppingCart,
+  Briefcase,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
+import SlaCompliance from '../../components/SlaCompliance/SlaCompliance'
 import styles from './Dashboard.module.css'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -36,6 +47,16 @@ const DIV_FLAGS: Record<string, string> = {
 const divLabel = (d: string) => (DIV_FLAGS[d] ? `${DIV_FLAGS[d]} ${d}` : d)
 const concColor = (r: number) => r >= 95 ? 'var(--green)' : r >= 80 ? 'var(--orange)' : 'var(--red)'
 const fmt = (s: string) => s ? new Date(s).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
+
+const FLUX_ICON_MAP: Record<string, LucideIcon> = {
+  STOCK:       BarChart3,
+  INVENTORY:   ShoppingCart,
+  PRICING:     Briefcase,
+  SALES:       BarChart3,
+  PROMO:       Zap,
+  RECONCILIATION: CheckCircle,
+  GENERAL:     BarChart3,
+}
 
 // ── Concordance Gauge (signature element) ──────────────────────────────────
 function ConcordanceGauge({ score, totalFlux, totalCrit, totalWarn }: { score: number; totalFlux: number; totalCrit: number; totalWarn: number }) {
@@ -78,7 +99,6 @@ function ConcordanceGauge({ score, totalFlux, totalCrit, totalWarn }: { score: n
   )
 }
 
-// ── KPI top card ───────────────────────────────────────────────────────────
 function KCard({ bar, ico, icoBg, lbl, val, valColor, sub, prog }: any) {
   return (
     <div className={styles.kcard}>
@@ -127,9 +147,20 @@ function FluxCard({ cfg, row, onNavigate }: { cfg: FluxCfg; row: HistRow | null;
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 20, fontWeight: 800 }}>
-            <span>{cfg.icon ?? '📊'}</span>
-            <span>{cfg.flux_name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 20, fontWeight: 800 }}>
+             {(() => {
+               let IconEl = FLUX_ICON_MAP[cfg.flux_id?.toUpperCase() ?? '']
+               if (!IconEl) {
+                 const iconEmoji = cfg.icon ?? '📊'
+                 if (typeof iconEmoji === 'string' && ['⚡','✅','🚨','⚠️','📊','📈','📦','🏪','💰','📥','📤'].includes(iconEmoji)) {
+                   IconEl = { '⚡': Zap, '✅': CheckCircle, '🚨': AlertCircle, '⚠️': AlertTriangle, '📊': BarChart3, '📈': BarChart3, '📦': ShoppingCart, '🏪': ShoppingCart, '💰': Briefcase, '📥': ShoppingCart, '📤': ShoppingCart }[iconEmoji]
+                 }
+               }
+               return IconEl
+                 ? <IconEl size={22} style={{ color: cfg.color || '#cbd5e1' }} />
+                 : <span style={{ fontSize: 20 }}>{cfg.icon ?? '📊'}</span>
+             })()}
+             <span>{cfg.flux_name}</span>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20, letterSpacing: '.5px',
               background: isImport ? 'rgba(124,58,237,.25)' : 'rgba(201,169,110,.2)',
@@ -319,12 +350,14 @@ export default function Dashboard() {
       {/* ── KPI Row ── */}
       {!loading && totalFlux > 0 && (
         <div className={styles.krow}>
-          <KCard bar="var(--blue)"   ico="⚡" icoBg="var(--blu-lt)" lbl="Flux analysés"     val={totalFlux}  sub="résultats actifs" />
-          <KCard bar="var(--green)"  ico="✅" icoBg="var(--grn-lt)" lbl="Concordance globale" val={avgConc+'%'} valColor={concColor(avgConc)} prog={avgConc} />
-          <KCard bar="var(--red)"    ico="🚨" icoBg="var(--red-lt)" lbl="Erreurs critiques"  val={totalCrit}  valColor="var(--red)"    sub="sur tous les flux" />
-          <KCard bar="var(--orange)" ico="⚠️" icoBg="var(--orn-lt)" lbl="Warnings"           val={totalWarn}  valColor="var(--orange)" sub="à surveiller" />
+          <KCard bar="var(--blue)"   ico={<Zap size={18} />} icoBg="var(--blu-lt)" lbl="Flux analysés"     val={totalFlux}  sub="résultats actifs" />
+          <KCard bar="var(--green)"  ico={<CheckCircle size={18} />} icoBg="var(--grn-lt)" lbl="Concordance globale" val={avgConc+'%'} valColor={concColor(avgConc)} prog={avgConc} />
+          <KCard bar="var(--red)"    ico={<AlertCircle size={18} />} icoBg="var(--red-lt)" lbl="Erreurs critiques"  val={totalCrit}  valColor="var(--red)"    sub="sur tous les flux" />
+          <KCard bar="var(--orange)" ico={<AlertTriangle size={18} />} icoBg="var(--orn-lt)" lbl="Warnings"           val={totalWarn}  valColor="var(--orange)" sub="à surveiller" />
         </div>
       )}
+
+      <SlaCompliance />
 
       {/* ── Contenu ── */}
       {loading ? (

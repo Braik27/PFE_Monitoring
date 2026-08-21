@@ -9,13 +9,13 @@ import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
 import PageLoader from './components/PageLoader/PageLoader'
 
 const Login       = lazy(() => import('./pages/Login/Login'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'))
+const ResetPassword  = lazy(() => import('./pages/ResetPassword/ResetPassword'))
 const Dashboard   = lazy(() => import('./pages/Dashboard/Dashboard'))
 const Analyze     = lazy(() => import('./pages/Analyze/Analyze'))
-const Reporting   = lazy(() => import('./pages/Reporting/Reporting'))
 const History     = lazy(() => import('./pages/History/History'))
 const Alerts      = lazy(() => import('./pages/Alerts/Alerts'))
 const Reports     = lazy(() => import('./pages/Reports/Reports'))
-const SmartCompare = lazy(() => import('./pages/SmartCompare/SmartCompare'))
 const Assistant    = lazy(() => import('./pages/Assistant/Assistant'))
 const FluxAdmin   = lazy(() => import('./pages/Admin/FluxAdmin'))
 const Users       = lazy(() => import('./pages/Admin/Users'))
@@ -57,6 +57,11 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/login" element={<LazyRoute><Login /></LazyRoute>} />
+      <Route path="/forgot-password" element={<LazyRoute><ForgotPassword /></LazyRoute>} />
+      <Route path="/reset-password" element={<LazyRoute><ResetPassword /></LazyRoute>} />
+
+      <Route path="/reporting" element={<Navigate to="/" replace />} />
+      <Route path="/smart" element={<Navigate to="/" replace />} />
 
       <Route path="/*" element={
         <PrivateRoute>
@@ -64,22 +69,26 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<LazyRoute><Dashboard /></LazyRoute>} />
               <Route path="/analyze" element={<LazyRoute><Analyze /></LazyRoute>} />
-              <Route path="/reporting" element={<LazyRoute><Reporting /></LazyRoute>} />
               <Route path="/history" element={<LazyRoute><History /></LazyRoute>} />
               <Route path="/alerts" element={<LazyRoute><Alerts /></LazyRoute>} />
               <Route path="/reports" element={<LazyRoute><Reports /></LazyRoute>} />
-              <Route path="/smart" element={<LazyRoute><SmartCompare /></LazyRoute>} />
               <Route path="/assistant" element={<LazyRoute><Assistant /></LazyRoute>} />
               <Route path="/profile" element={<LazyRoute><Profile /></LazyRoute>} />
               <Route path="/flux-admin" element={<LazyRoute><PrivateRoute adminOnly><FluxAdmin /></PrivateRoute></LazyRoute>} />
               <Route path="/users" element={<LazyRoute><PrivateRoute adminOnly><Users /></PrivateRoute></LazyRoute>} />
-              <Route path="/monitoring" element={<LazyRoute><PrivateRoute adminOnly><Monitoring /></PrivateRoute></LazyRoute>} />
+              <Route path="/monitoring" element={
+                <LazyRoute>
+                  <PrivateRoute adminOnly>
+                    <Monitoring />
+                  </PrivateRoute>
+                </LazyRoute>
+              } />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
         </PrivateRoute>
       } />
-    </Routes>
+     </Routes>
   )
 }
 

@@ -100,3 +100,19 @@
   background: var(--blue);
   flex-shrink: 0;
 }
+
+.deleteBtn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  opacity: .45;
+  transition: all .15s;
+}
+.deleteBtn:hover {
+  opacity: 1;
+  background: var(--red-lt);
+}

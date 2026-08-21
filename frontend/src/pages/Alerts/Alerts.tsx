@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
@@ -9,14 +10,20 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING:      '🟡 Nouveau',
   ACKNOWLEDGED: '🔵 Pris en charge',
   IN_PROGRESS:  '🟣 En cours',
+  ESCALATED:    '🟠 Escaladée',
   RESOLVED:     '🟢 Résolu',
+  CLOSED:       '⚫ Clôturée',
+  IGNORED:      '🚫 Ignoré',
 }
 const STATUS_BORDER: Record<string, string> = {
   NEW:          'var(--orange)',
   PENDING:      'var(--orange)',
   ACKNOWLEDGED: 'var(--blue)',
   IN_PROGRESS:  'var(--purple)',
+  ESCALATED:    'var(--orange)',
   RESOLVED:     'var(--green)',
+  CLOSED:       'var(--mut)',
+  IGNORED:      'var(--mut)',
 }
 
 // ✅ Vrai structure retournée par le backend (generic_comparator.py)
@@ -32,13 +39,22 @@ interface Anomaly {
 
 interface Alert {
   id: string; token: string; flux_name: string; flux_id: string; division: string
-  status: string; n_critiques: number; concordance_rate: number; n_warnings: number
+  status: string; n_critiques: number; concordance: number; n_warnings: number
   created_at: string; label?: string; analyst?: string; tracking?: any[]
   ai_suggestion?: any; anomalies?: Anomaly[]
+  sla_deadline?: string | null
+  sla_hours?: number | null
+  remaining_pct?: number | null
+  sla_breached?: number | boolean
+  sla_warning_sent?: number | boolean
+  concordance_state?: string | null
+  escalated_to?: string | null
+  escalated_by?: string | null
+  resolved_by?: string | null
 }
 
 
-const SLA_MS = 4 * 3600 * 1000 // 4h
+const DEFAULT_SLA_MS = 4 * 3600 * 1000 // fallback 4h si champs API absents
 
 function fmtCountdown(ms: number) {
   if (ms <= 0) return 'DÉPASSÉ'
@@ -48,31 +64,54 @@ function fmtCountdown(ms: number) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
 }
 
-function SlaPanel({ createdAt }: { createdAt: string }) {
+function SlaPanel({ alert }: { alert: Alert }) {
   const [remaining, setRemaining] = useState(0)
+  const [totalMs, setTotalMs] = useState(DEFAULT_SLA_MS)
+
   useEffect(() => {
-    const t0 = new Date(createdAt).getTime()
-    const tick = () => setRemaining(SLA_MS - (Date.now() - t0))
+    const createdAt = new Date(alert.created_at).getTime()
+    const deadlineMs = alert.sla_deadline
+      ? new Date(alert.sla_deadline).getTime()
+      : createdAt + DEFAULT_SLA_MS
+    const duration = alert.sla_hours
+      ? alert.sla_hours * 3600000
+      : (deadlineMs - createdAt) || DEFAULT_SLA_MS
+
+    setTotalMs(duration > 0 ? duration : DEFAULT_SLA_MS)
+
+    const tick = () => {
+      const now = Date.now()
+      if (alert.sla_deadline) {
+        setRemaining(new Date(alert.sla_deadline).getTime() - now)
+      } else {
+        setRemaining(DEFAULT_SLA_MS - (now - createdAt))
+      }
+    }
     tick()
     const iv = setInterval(tick, 1000)
     return () => clearInterval(iv)
-  }, [createdAt])
+  }, [alert.created_at, alert.sla_deadline, alert.sla_hours, alert.remaining_pct])
 
-  const pct  = Math.max(0, Math.min(100, (remaining / SLA_MS) * 100))
-  const over = remaining <= 0
-  const near = remaining < 3600000
+  const slaHoursLabel = alert.sla_hours ? `${alert.sla_hours}h` : '4h'
+  const breached = Boolean(alert.sla_breached) || remaining <= 0
+  const pct  = totalMs > 0 ? Math.max(0, Math.min(100, (remaining / totalMs) * 100)) : 0
+  const over = breached
+  const near = !over && remaining < 3600000
   const barBg = over ? 'var(--red)' : near ? 'var(--orange)' : 'var(--green)'
   const cls   = over ? { background: 'var(--red)', color: '#fff' }
                : near ? { background: 'var(--red-lt)', color: 'var(--red)' }
                : { background: 'var(--grn-lt)', color: 'var(--green)' }
   const msg = over ? '⚠ SLA dépassé — action immédiate requise.'
              : near ? "Moins d'1h restante — correction urgente nécessaire."
-             : 'Temps restant pour respecter le SLA de 4h.'
+             : `Temps restant pour respecter le SLA de ${slaHoursLabel}.`
 
   return (
     <div style={{ background: 'var(--s2)', border: '1.5px solid var(--brd)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt2)' }}>⏱ Temps restant pour résoudre (SLA 4h)</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt2)' }}>
+          ⏱ Temps restant pour résoudre (SLA {slaHoursLabel})
+          {alert.sla_deadline ? '' : ' — défaut'}
+        </span>
         <span style={{ ...cls, fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 20 }}>
           {fmtCountdown(remaining)}
           {over && ' '}
@@ -89,6 +128,7 @@ function SlaPanel({ createdAt }: { createdAt: string }) {
 
 export default function Alerts() {
   const { showToast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [fluxFilter, setFluxFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -102,21 +142,64 @@ export default function Alerts() {
   const [escalateEmail, setEscalateEmail] = useState('')
   const [escalateReason, setEscalateReason] = useState('')
   const [escalateComment, setEscalateComment] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Alert | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const loadFluxOptions = useCallback(async () => {
+    try {
+      const res = await api.get('/api/flux')
+      const data = res.data
+      const fluxes: string[] = Array.isArray(data)
+        ? data.map((f: any) => f.flux_id).filter(Boolean)
+        : data?.fluxes
+          ? data.fluxes.map((f: any) => f.flux_id).filter(Boolean)
+          : data?.data
+            ? data.data.map((f: any) => f.flux_id).filter(Boolean)
+            : []
+      setFluxOptions(fluxes)
+    } catch {
+      setFluxOptions([])
+    }
+  }, [])
+
+  useEffect(() => { loadFluxOptions() }, [loadFluxOptions])
 
   const load = useCallback(async () => {
     try {
-      const params: any = {}
+      const params: Record<string, string> = {}
       if (fluxFilter) params.flux_id = fluxFilter
-      if (statusFilter) params.status = statusFilter
+      if (statusFilter === 'CLOSED') params.archived = '1'
       const res = await api.get('/api/alerts', { params })
-      const list: Alert[] = res.data.alerts ?? res.data ?? []
+      let list: Alert[] = res.data.alerts ?? res.data ?? []
+      if (statusFilter && statusFilter !== 'CLOSED') {
+        list = list.filter(a => a.status === statusFilter)
+      }
       setAlerts(list)
-      const fluxes = [...new Set(list.map((a: Alert) => a.flux_id).filter(Boolean))]
-      setFluxOptions(fluxes)
     } catch { showToast('Erreur chargement alertes', 'error') }
   }, [fluxFilter, statusFilter, showToast])
 
   useEffect(() => { load() }, [load])
+
+  // Auto-select alert from URL token param, then clear URL
+  useEffect(() => {
+    const token = searchParams.get('token')
+    if (token) {
+      setSearchParams({}, { replace: true })
+      const findAndSelect = async () => {
+        try {
+          const res = await api.get(`/api/alerts/${token}`)
+          if (res.data) {
+            setAlerts(prev => {
+              const existing = prev.find(a => a.token === token)
+              return existing ? prev : [...prev, res.data]
+            })
+            setSelected(res.data)
+          }
+        } catch { /* token may not be valid */ }
+      }
+      findAndSelect()
+    }
+  }, [searchParams, setSearchParams])
 
   const selectAlert = async (a: Alert) => {
     setAiData(null)
@@ -135,25 +218,25 @@ export default function Alerts() {
       showToast(`Statut mis à jour : ${STATUS_LABELS[status] ?? status}`, 'success')
       load()
       setSelected(s => s ? { ...s, status } : s)
-    } catch { showToast('Erreur mise à jour', 'error') }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Erreur mise à jour'
+      showToast(msg, 'error')
+    }
   }
 
   const resolveAlert = async () => {
-    if (!selected) return
+    if (!selected || !resolveComment.trim()) {
+      showToast('Commentaire requis pour résoudre', 'error')
+      return
+    }
     try {
-      // ✅ Le backend expose POST /api/alerts/<token>/resolve
-      await api.post(`/api/alerts/${selected.token}/resolve`, { comment: resolveComment })
+      await api.post(`/api/alerts/${selected.token}/resolve`, { comment: resolveComment.trim() })
       showToast('Alerte résolue', 'success')
       setResolveModal(false); setResolveComment('')
       load(); setSelected(null)
-    } catch {
-      // Fallback sur PATCH status
-      try {
-        await api.patch(`/api/alerts/${selected.token}/status`, { status: 'RESOLVED', comment: resolveComment })
-        showToast('Alerte résolue', 'success')
-        setResolveModal(false); setResolveComment('')
-        load(); setSelected(null)
-      } catch { showToast('Erreur résolution', 'error') }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Erreur résolution'
+      showToast(msg, 'error')
     }
   }
 
@@ -167,7 +250,24 @@ export default function Alerts() {
       })
       showToast('Alerte escaladée', 'success')
       setEscalateModal(false); setEscalateEmail(''); setEscalateReason(''); setEscalateComment('')
-    } catch { showToast('Erreur escalade', 'error') }
+    } catch (err: any) {
+      showToast(err?.response?.data?.error || 'Erreur escalade', 'error')
+    }
+  }
+
+  const deleteAlert = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await api.delete(`/api/alerts/${deleteTarget.token}`)
+      showToast('Alerte supprimée', 'success')
+      if (selected?.token === deleteTarget.token) setSelected(null)
+      setDeleteTarget(null)
+      load()
+    } catch (err: any) {
+      showToast(err?.response?.data?.error || 'Erreur suppression', 'error')
+    }
+    finally { setDeleting(false) }
   }
 
   // ✅ CORRIGÉ : le backend expose GET (pas POST) /api/alerts/<token>/suggest
@@ -193,6 +293,18 @@ export default function Alerts() {
     return 'WARNING'
   }
 
+  // Concordance state badge (0-70% = CRITIQUE, >70-<80% = ATTENTION, >=80% = NORMAL)
+  const concordanceBadge = (state: string | null | undefined, concordance: number) => {
+    const s = (state ?? '').toUpperCase()
+    if (s === 'CRITIQUE') return { cls: 'b-r', label: '🔴 CRITIQUE' }
+    if (s === 'ATTENTION') return { cls: 'b-o', label: '🟠 ATTENTION' }
+    if (s === 'NORMAL') return { cls: 'b-g', label: '🟢 NORMAL' }
+    // Fallback based on numeric value
+    if (concordance < 70) return { cls: 'b-r', label: '🔴 CRITIQUE' }
+    if (concordance < 80) return { cls: 'b-o', label: '🟠 ATTENTION' }
+    return { cls: 'b-g', label: '🟢 NORMAL' }
+  }
+
   return (
     <>
           {/* Filters */}
@@ -206,7 +318,10 @@ export default function Alerts() {
           <option value="NEW">🟡 Nouveau</option>
           <option value="ACKNOWLEDGED">🔵 Pris en charge</option>
           <option value="IN_PROGRESS">🟣 En cours</option>
+          <option value="ESCALATED">🟠 Escaladée</option>
+          <option value="IGNORED">🚫 Ignoré</option>
           <option value="RESOLVED">🟢 Résolu</option>
+          <option value="CLOSED">⚫ Clôturée</option>
         </select>
         <button className="btn bg-btn bsm" onClick={load}>🔄</button>
       </div>
@@ -214,7 +329,7 @@ export default function Alerts() {
       {/* Detail panel */}
       {selected && (
         <div className={styles.detailPanel}>
-          <SlaPanel createdAt={selected.created_at} />
+          <SlaPanel alert={selected} />
           <div className={styles.detailHeader}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 3 }}>
@@ -233,9 +348,9 @@ export default function Alerts() {
               >✅ Prendre en charge</button>
               <button
                 className="btn bsm"
-                style={{ background: 'var(--pur-lt)', color: 'var(--purple)', border: '1px solid var(--pur-md)' }}
-                onClick={() => trackAlert('IN_PROGRESS')}
-              >🔧 En cours</button>
+                style={{ background: 'rgba(148,163,184,.2)', color: 'var(--mut)', border: '1px solid rgba(148,163,184,.35)' }}
+                onClick={() => trackAlert('IGNORED')}
+              >🚫 Ignorer</button>
               <button
                 className="btn bsm"
                 style={{ background: 'var(--orn-lt)', color: 'var(--orange)', border: '1px solid var(--orn-md)' }}
@@ -248,14 +363,27 @@ export default function Alerts() {
           {/* KPIs */}
           <div className={styles.detailKpis}>
             {[
-              { l: 'CONCORDANCE', v: `${selected.concordance_rate ?? '—'}%`, c: 'var(--green)' },
+              { l: 'CONCORDANCE', v: `${selected.concordance ?? '—'}%`, c: 'var(--green)' },
+              { l: 'ÉTAT', v: concordanceBadge(selected.concordance_state, selected.concordance ?? 0).label, c: 'var(--txt)' },
               { l: 'CRITIQUES',   v: selected.n_critiques ?? '—', c: 'var(--red)' },
               { l: 'WARNINGS',    v: selected.n_warnings ?? '—', c: 'var(--orange)' },
-              { l: 'STATUT',      v: STATUS_LABELS[selected.status] ?? selected.status, c: STATUS_BORDER[selected.status] },
             ].map(k => (
               <div key={k.l} className={styles.detailKpi}>
                 <div style={{ fontSize: 10, color: 'var(--mut)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>{k.l}</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: k.c }}>{k.v}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: k.c }}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.detailKpis}>
+            {[
+              { l: 'STATUT', v: STATUS_LABELS[selected.status] ?? selected.status, c: STATUS_BORDER[selected.status] },
+              { l: 'RESPONSABLE', v: selected.escalated_to || selected.resolved_by || '—', c: 'var(--blue)' },
+              ...(selected.sla_warning_sent ? [{ l: 'SLA WARNING', v: '📧 Envoyé', c: 'var(--orange)' }] : []),
+              ...(selected.sla_breached ? [{ l: 'SLA DÉPASSÉ', v: '🚨 Oui', c: 'var(--red)' }] : []),
+            ].map(k => (
+              <div key={k.l} className={styles.detailKpi}>
+                <div style={{ fontSize: 10, color: 'var(--mut)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>{k.l}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: k.c }}>{k.v}</div>
               </div>
             ))}
           </div>
@@ -407,14 +535,23 @@ export default function Alerts() {
                 <span>{STATUS_LABELS[a.status] ?? a.status}</span>
                 <span>{a.n_critiques ?? 0} critique(s)</span>
                 <span>{a.n_warnings ?? 0} warning(s)</span>
-                <span>{a.concordance_rate ?? 0}% concordance</span>
+                <span>{a.concordance ?? 0}% concordance</span>
                 <span>{a.created_at ? new Date(a.created_at).toLocaleString('fr-FR') : ''}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span className={`bdg ${a.n_critiques > 0 ? 'b-r' : 'b-o'}`}>
-                {a.n_critiques > 0 ? 'CRITIQUE' : 'WARNING'}
+              <span className={`bdg ${concordanceBadge(a.concordance_state, a.concordance ?? 0).cls}`}>
+                {concordanceBadge(a.concordance_state, a.concordance ?? 0).label.split(' ').slice(1).join(' ')}
               </span>
+              {a.sla_breached ? <span className="bdg b-r" title="SLA dépassée">🚨 SLA</span> : null}
+              {a.sla_warning_sent ? <span className="bdg b-o" title="Email SLA warning envoyé">📧</span> : null}
+              {a.escalated_to ? <span className="bdg b-o" title={`Escaladé vers ${a.escalated_to}`}>↗</span> : null}
+              <button
+                className={styles.deleteBtn}
+                title="Supprimer l'alerte"
+                aria-label="Supprimer l'alerte"
+                onClick={e => { e.stopPropagation(); setDeleteTarget(a) }}
+              >🗑️</button>
             </div>
           </div>
         ))}
@@ -499,6 +636,34 @@ export default function Alerts() {
                 onClick={escalateAlert}
                 disabled={!escalateEmail || !escalateEmail.includes('@')}
               >⬆ Confirmer l'escalade</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="ov" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="mhead">
+              <span style={{ fontWeight: 700 }}>🗑️ Supprimer l'alerte</span>
+              <button className="mclose" onClick={() => setDeleteTarget(null)}>×</button>
+            </div>
+            <div className="mbody">
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--txt2)' }}>
+                Voulez-vous vraiment supprimer l'alerte{' '}
+                <strong>{deleteTarget.flux_name ?? deleteTarget.flux_id}</strong>
+                {deleteTarget.division ? ` — ${deleteTarget.division}` : ''} ?
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--mut)', margin: '8px 0 0' }}>
+                Cette action est définitive : l'alerte et tout son historique de suivi seront supprimés.
+              </p>
+            </div>
+            <div className="mfoot">
+              <button className="btn bg-btn bsm" onClick={() => setDeleteTarget(null)}>Annuler</button>
+              <button className="btn bsm" style={{ background: 'var(--red-lt)', color: 'var(--red)', border: '1px solid var(--red)' }} onClick={deleteAlert} disabled={deleting}>
+                {deleting ? '⏳ Suppression...' : '🗑️ Confirmer la suppression'}
+              </button>
             </div>
           </div>
         </div>
