@@ -26,7 +26,7 @@ def main():
 
     from storage import get_storage
     from core.sla_monitor import monitor_sla_job
-    from api.daily_report import send_daily_report
+    from api.daily_report import daily_report
 
     storage = get_storage()
     storage.init_db()
@@ -46,7 +46,7 @@ def main():
         )
 
         scheduler.add_job(
-            send_daily_report,
+            daily_report,
             trigger="cron",
             hour=8,
             minute=0,
