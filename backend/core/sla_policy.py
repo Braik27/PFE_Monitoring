@@ -166,13 +166,46 @@ def classify_alert(
     return "P2", SLA_HOURS_BY_CLASS["P2"], "default"
 
 
+def compute_sla_deadline(created_at: datetime, sla_hours: float) -> datetime:
+    """
+    Source de vérité pour le calcul d'une deadline SLA (pur, sans effet de bord) :
+    deadline = création + durée SLA.
+    """
+    return created_at + timedelta(hours=sla_hours)
+
+
+def compute_sla_status(
+    sla_hours: float,
+    sla_deadline: datetime,
+    now: datetime,
+) -> Dict[str, Any]:
+    """
+    Source de vérité pour le statut SLA (pur : entrées 100% explicites,
+    aucun accès DB ni horloge implicite).
+
+    Retourne sla_deadline (ISO), remaining_pct et breached.
+    """
+    total_sec = sla_hours * 3600
+    if total_sec <= 0:
+        remaining_pct = 0.0
+    else:
+        remaining_sec = max(0, (sla_deadline - now).total_seconds())
+        remaining_pct = round(remaining_sec / total_sec * 100, 1)
+
+    return {
+        "sla_deadline": sla_deadline.isoformat(),
+        "remaining_pct": remaining_pct,
+        "breached": now > sla_deadline,
+    }
+
+
 def compute_sla_at_creation(
     created_at: datetime,
     severity_class: str,
     sla_hours: float,
 ) -> Dict[str, Any]:
     """Calcule sla_deadline et remaining_pct à la création."""
-    deadline = created_at + timedelta(hours=sla_hours)
+    deadline = compute_sla_deadline(created_at, sla_hours)
     return {
         "sla_deadline": deadline.isoformat(),
         "sla_hours": round(sla_hours, 1),
@@ -312,19 +345,12 @@ def recompute_sla_progress(alert: dict) -> Dict[str, Any]:
     if deadline_str:
         deadline = parse_alert_datetime(deadline_str)
     else:
-        deadline = created + timedelta(hours=sla_hours)
+        deadline = compute_sla_deadline(created, sla_hours)
 
-    now = datetime.utcnow()
-    total_sec = sla_hours * 3600
-    if total_sec <= 0:
-        remaining_pct = 0.0
-    else:
-        remaining_sec = max(0, (deadline - now).total_seconds())
-        remaining_pct = round(remaining_sec / total_sec * 100, 1)
-
+    status = compute_sla_status(sla_hours, deadline, now=datetime.utcnow())
     return {
-        "sla_deadline": deadline.isoformat(),
+        "sla_deadline": status["sla_deadline"],
         "sla_hours": sla_hours,
-        "remaining_pct": remaining_pct,
-        "breached": now > deadline,
+        "remaining_pct": status["remaining_pct"],
+        "breached": status["breached"],
     }
