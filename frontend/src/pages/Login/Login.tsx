@@ -16,7 +16,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
 
-  const next = (location.state as { from?: string })?.from || '/'
+  // Cible post-login : state.from (bounce PrivateRoute) > ?next= (redirection backend) > /
+  const next =
+    (location.state as { from?: string })?.from ||
+    (() => {
+      const q = new URLSearchParams(location.search).get('next')
+      // Sanitisation : uniquement des chemins internes
+      return q && q.startsWith('/') && !q.startsWith('//') ? q : '/'
+    })()
 
   useEffect(() => {
     api.get('/api/auth/config')

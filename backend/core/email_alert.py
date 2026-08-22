@@ -94,7 +94,7 @@ def _send_single_rafale(flux_name: str, token: str, n_critiques: int, severity: 
   <h2 style='color:#dc2626'>🚨 Nouvelle alerte{sev_label}</h2>
   <p><b>Flux :</b> {flux_name}</p>
   <p><b>Critiques :</b> {n_critiques}</p>
-  <p><a href='{base}/?alert_token={token}' style='background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir l'alerte</a></p>
+  <p><a href='{base}/alerts?token={token}' style='background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir l'alerte</a></p>
 </div></body></html>"""
 
     subject = f"🚨 Alerte {flux_name}{sev_label} — {n_critiques} critiques"

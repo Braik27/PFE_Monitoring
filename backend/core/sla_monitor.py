@@ -130,7 +130,7 @@ def _email_sla_warning(alert: dict, remaining_pct: float, to_addr: str) -> None:
     <p style='margin:4px 0'><b>Statut :</b> {current_status}</p>
     <p style='margin:4px 0'><b>Responsable :</b> {responsible}</p>
   </div>
-  <a href='{base}/?alert_token={token}' style='display:inline-block;background:#d97706;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Ouvrir l'alerte</a>
+  <a href='{base}/alerts?token={token}' style='display:inline-block;background:#d97706;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Ouvrir l'alerte</a>
   <div style='margin-top:20px;padding:14px;background:#f1f5f9;border-radius:8px;font-size:12px;color:#64748b'>
     <strong>Flux Monitor — TimSoft</strong>
   </div>
@@ -168,7 +168,7 @@ def _email_sla_breach(alert: dict, to_addrs: list[str]) -> None:
     <p style='margin:4px 0'><b>Statut actuel :</b> {current_status}</p>
     <p style='margin:4px 0'><b>Responsable :</b> {responsible}</p>
   </div>
-  <a href='{base}/?alert_token={token}' style='display:inline-block;background:#e53e3e;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Intervenir maintenant</a>
+  <a href='{base}/alerts?token={token}' style='display:inline-block;background:#e53e3e;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Intervenir maintenant</a>
   <div style='margin-top:20px;padding:14px;background:#f1f5f9;border-radius:8px;font-size:12px;color:#64748b'>
     <strong>Flux Monitor — TimSoft</strong>
   </div>
@@ -192,7 +192,7 @@ def _send_breach_report_email(alert: dict, to_addrs: list[str]) -> None:
   <p><b>Sévérité :</b> {report['severity'] or report.get('severity_class', '—')}</p>
   <p><b>SLA Status :</b> {report['sla_status']}</p>
   <p><b>Créée le :</b> {report['created_at']}</p>
-  <p><a href='{base}/?alert_token={token}' style='background:#1d4ed8;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir les détails</a></p>
+  <p><a href='{base}/alerts?token={token}' style='background:#1d4ed8;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir les détails</a></p>
 </div></body></html>"""
     subject = f"📊 Rapport alerte — {report['flux_name']}"
     for addr in to_addrs:

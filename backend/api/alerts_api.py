@@ -199,7 +199,7 @@ def notify_on_alert_ignored(token: str, b_username: str, comment: str):
     <p style='margin:4px 0'><b>SLA :</b> {sla_h}h — reste {remaining}%</p>
     <p style='margin:4px 0'><b>Statut :</b> IGNORED</p>
   </div>
-  <a href='{base_url}/?alert_token={token}' style='display:inline-block;background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir l'alerte</a>
+  <a href='{base_url}/alerts?token={token}' style='display:inline-block;background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700'>Voir l'alerte</a>
   <div style='margin-top:20px;padding:14px;background:#f1f5f9;border-radius:8px;font-size:12px;color:#64748b'>
     <strong>Flux Monitor — TimSoft</strong><br>
     <a href='{base_url}/' style='color:#1d4ed8'>Ouvrir le dashboard →</a>
@@ -333,7 +333,7 @@ def _build_confirmation_page(action: str, username: str, alert: dict, token: str
       <div class="detail-row"><span class="detail-key">Nouveau statut</span><span class="status-badge">{action_labels.get(action, action)}</span></div>
     </div>
     <div class="actions">
-      <a href="{base_url}/?alert_token={token}" class="btn btn-primary">🔍 Voir l'alerte complète</a>
+      <a href="{base_url}/alerts?token={token}" class="btn btn-primary">🔍 Voir l'alerte complète</a>
       <a href="{base_url}/" class="btn btn-secondary">📊 Dashboard</a>
     </div>
   </div>
@@ -423,8 +423,8 @@ def alert_page(token: str):
         )
         return redirect(f"/alerts?token={token}")
 
-    # Pas d'action → redirige vers le dashboard avec l'alerte ouverte
-    return redirect(f"/?alert_token={token}")
+    # Pas d'action → redirige vers la page Alertes avec l'alerte ouverte
+    return redirect(f"/alerts?token={token}")
 
 
 @alerts_bp.post("/api/alerts/manual")

@@ -1,5 +1,5 @@
 import { type ReactNode, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -42,11 +42,14 @@ function LazyRoute({ children }: { children: ReactNode }) {
   )
 }
 
-/** Protège les routes privées — redirige vers /login si non connecté */
+/** Protège les routes privées — redirige vers /login si non connecté (en mémorisant la cible) */
 function PrivateRoute({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
   const { user, isLoading } = useAuth()
+  const location = useLocation()
   if (isLoading) return <PageLoader />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  }
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />
   return <>{children}</>
 }
