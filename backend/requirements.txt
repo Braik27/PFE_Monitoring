@@ -42,6 +42,12 @@ azure-monitor-opentelemetry>=1.6.0
 # Embeddings locaux CPU — modèle ~90MB téléchargé une fois
 sentence-transformers>=3.0.0
 
+# Torch épinglé explicitement : sinon sentence-transformers le tire
+# transitivement et pip résout les wheels CUDA (~2.5 Go de deps NVIDIA)
+# sur Linux. L'extra-index force la résolution vers les wheels CPU.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+
 # Index vectoriel FAISS — CPU uniquement, pas de GPU requis
 faiss-cpu>=1.8.0
 
