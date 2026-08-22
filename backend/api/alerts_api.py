@@ -1070,7 +1070,7 @@ def feedback_ia(token: str):
     try:
         from datetime import datetime
         created = datetime.fromisoformat(alert["created_at"])
-        resolution_hours = round((datetime.now() - created).total_seconds() / 3600, 2)
+        resolution_hours = round((datetime.utcnow() - created).total_seconds() / 3600, 2)
     except Exception:
         pass
 

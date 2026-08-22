@@ -90,7 +90,7 @@ def system_metrics():
       - État résumé de l'IA
     """
     db = get_storage()
-    now = datetime.now()
+    now = datetime.utcnow()
     yesterday = now - timedelta(hours=24)
     last_week_start = now - timedelta(days=14)
     this_week_start = now - timedelta(days=7)
@@ -188,7 +188,7 @@ def system_audit():
     """
     limit = min(int(request.args.get("limit", 50)), 200)
     days  = int(request.args.get("days", 7))
-    since = datetime.now() - timedelta(days=days)
+    since = datetime.utcnow() - timedelta(days=days)
 
     db = get_storage()
     all_alerts = db.list_alerts(limit=500)
