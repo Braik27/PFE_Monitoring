@@ -485,18 +485,24 @@ def create_manual_alert():
     }]
 
     try:
-        from datetime import datetime, timedelta
-        from core.sla_policy import build_sla_meta, get_expected_hour_for_flux, validate_sla_hours
+        from datetime import datetime
+        from core.sla_policy import (
+            build_sla_meta,
+            compute_sla_deadline,
+            get_expected_hour_for_flux,
+            validate_sla_hours,
+        )
 
         if not expected_hour:
             expected_hour = get_expected_hour_for_flux(flux_id)
+        detected_at = datetime.utcnow()
         sla_meta = build_sla_meta(
             anomalies,
             n_critiques=1,
             n_warnings=0,
             concordance=0.0,
             expected_hour=expected_hour,
-            detected_at=datetime.utcnow(),
+            detected_at=detected_at,
         )
 
         # Extract and validate SLA if provided by client
@@ -509,7 +515,7 @@ def create_manual_alert():
                 validate_sla_hours(client_sla_val)
                 # Override computed SLA
                 sla_meta["sla_hours"] = client_sla_val
-                sla_meta["sla_deadline"] = (datetime.utcnow() + timedelta(hours=client_sla_val)).isoformat()
+                sla_meta["sla_deadline"] = compute_sla_deadline(detected_at, client_sla_val).isoformat()
             except ValueError as val_err:
                 return jsonify({"error": str(val_err), "erreur": str(val_err)}), 400
             except Exception:
