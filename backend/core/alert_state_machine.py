@@ -5,9 +5,14 @@ States: NEW → ACKNOWLEDGED → IN_PROGRESS → RESOLVED → CLOSED
         (can escalate at any stage before CLOSED)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 from enum import Enum
+
+from core.sla_policy import (
+    compute_sla_deadline as compute_canonical_sla_deadline,
+    compute_sla_status,
+)
 
 
 # ─── State Definitions ──────────────────────────────────────────────────
@@ -207,13 +212,12 @@ def compute_sla_deadline(
 
     sla_hours = base * weight * backlog * modifier
     created = datetime.fromisoformat(alert["created_at"]) if isinstance(alert["created_at"], str) else alert["created_at"]
-    deadline = created + timedelta(hours=sla_hours)
-    now = datetime.utcnow()
-    remaining = max(0, (deadline - now) / timedelta(hours=sla_hours) * 100)
+    deadline = compute_canonical_sla_deadline(created, sla_hours)
+    status = compute_sla_status(sla_hours, deadline, now=datetime.utcnow())
 
     return {
-        "sla_deadline": deadline.isoformat(),
+        "sla_deadline": status["sla_deadline"],
         "sla_hours": round(sla_hours, 1),
-        "remaining_pct": round(remaining, 1),
-        "breached": now > deadline,
+        "remaining_pct": status["remaining_pct"],
+        "breached": status["breached"],
     }
