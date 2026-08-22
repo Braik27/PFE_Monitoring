@@ -16,9 +16,7 @@ import logging
 from flask import Blueprint, jsonify, request, session, redirect
 from storage import get_storage
 from api.auth import require_auth, require_admin
-import os, smtplib, threading
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import os, threading
 from urllib.parse import quote
 
 log = logging.getLogger(__name__)
@@ -28,17 +26,7 @@ def _send_escalation_email(to_email: str, username: str, flux_id: str, token: st
     """Envoie un email d'escalade complet — liens sécurisés avec auth obligatoire."""
     def _do_send():
         try:
-            smtp_host  = os.environ.get("ALERT_SMTP_HOST", "")
-            smtp_port  = os.environ.get("ALERT_SMTP_PORT", "587")
-            smtp_user  = os.environ.get("ALERT_SMTP_USER", "")
-            smtp_pass  = os.environ.get("ALERT_SMTP_PASSWORD", "")
-            from_email = os.environ.get("ALERT_EMAIL_FROM", smtp_user)
-
-            log.info("[ESCALATE] Tentative d'envoi vers %s via %s", to_email, smtp_host)
-
-            if not smtp_host or not smtp_user:
-                log.error("[ESCALATE] SMTP non configure — verifiez ALERT_SMTP_HOST et ALERT_SMTP_USER")
-                return
+            log.info("[ESCALATE] Tentative d'envoi vers %s", to_email)
 
             base_url = os.environ.get("APP_BASE_URL", "https://flask-trainer-app-f8bpdvavegh2gjh2.francecentral-01.azurewebsites.net")
 
@@ -96,17 +84,11 @@ def _send_escalation_email(to_email: str, username: str, flux_id: str, token: st
   </div>
 </div></body></html>"""
 
-            msg = MIMEMultipart("alternative")
-            msg["From"]    = from_email
-            msg["To"]      = to_email
-            msg["Subject"] = subject
-            msg.attach(MIMEText(body_html, "html", "utf-8"))
+            from core.email_service import send_email
 
-            with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(from_email, [to_email], msg.as_string())
+            if not send_email(to_email, subject, body_html):
+                log.error("[ESCALATE] Envoi impossible vers %s (SMTP non configure ou erreur)", to_email)
+                return
 
             log.info("[ESCALATE] Email envoye vers %s", to_email)
 
@@ -145,9 +127,7 @@ STATUS_CSS = {
 
 def notify_on_alert_ignored(token: str, b_username: str, comment: str):
     """Envoie un email et pousse une notification websocket quand B ignore une alerte escaladée."""
-    import os, smtplib, threading
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
+    import os, threading
     from storage import get_storage
     from core.sla_policy import get_concordance_state, recompute_sla_progress
 
@@ -226,25 +206,17 @@ def notify_on_alert_ignored(token: str, b_username: str, comment: str):
   </div>
 </div></body></html>"""
 
-    from_addr = os.environ.get("ALERT_EMAIL_FROM", os.environ.get("ALERT_SMTP_USER", "noreply@fluxmonitor.timsoft.com"))
     smtp_host = os.environ.get("ALERT_SMTP_HOST", "")
-    smtp_port = int(os.environ.get("ALERT_SMTP_PORT", "587"))
     smtp_user = os.environ.get("ALERT_SMTP_USER", "")
-    smtp_pass = os.environ.get("ALERT_SMTP_PASSWORD", "")
 
     if smtp_host and smtp_user:
         def _do_send_ignore():
             try:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"]    = from_addr
-                msg["To"]      = email_a
-                msg.attach(MIMEText(body, "html", "utf-8"))
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as s:
-                    s.ehlo()
-                    s.starttls()
-                    s.login(smtp_user, smtp_pass)
-                    s.sendmail(from_addr, [email_a], msg.as_string())
+                from core.email_service import send_email
+
+                if not send_email(email_a, subject, body):
+                    log.error("[IGNORE] Envoi impossible vers %s (SMTP non configure ou erreur)", email_a)
+                    return
                 log.info("[IGNORE] Email envoyé vers %s", email_a)
             except Exception as e:
                 log.error("[IGNORE] Erreur SMTP: %s", e)

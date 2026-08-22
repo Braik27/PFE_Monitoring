@@ -12,11 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
-import smtplib
 import threading
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from core.sla_policy import (
     SLA_EXCLUDED_STATUSES,
@@ -24,6 +21,7 @@ from core.sla_policy import (
     recompute_sla_progress,
     get_concordance_state,
 )
+from core.email_service import send_email
 
 log = logging.getLogger(__name__)
 
@@ -34,31 +32,12 @@ WARNING_REMAINING_PCT = 25.0
 
 
 def _smtp_send(to_addr: str, subject: str, body_html: str) -> None:
-    smtp_host = os.environ.get("ALERT_SMTP_HOST", "")
-    smtp_port = int(os.environ.get("ALERT_SMTP_PORT", "587"))
-    smtp_user = os.environ.get("ALERT_SMTP_USER", "")
-    smtp_pass = os.environ.get("ALERT_SMTP_PASSWORD", "")
-    from_addr = os.environ.get("ALERT_EMAIL_FROM", smtp_user or "noreply@fluxmonitor.timsoft.com")
-
-    if not smtp_host or not smtp_user or not to_addr:
-        log.warning("[SLA] SMTP ou destinataire non configuré — email ignoré")
+    if not to_addr:
+        log.warning("[SLA] Destinataire manquant — email ignoré")
         return
-
-    msg = MIMEMultipart("alternative")
-    msg["From"] = from_addr
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body_html, "html", "utf-8"))
-
-    try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(from_addr, [to_addr], msg.as_string())
-        log.info("[SLA] Email envoyé → %s", to_addr)
-    except Exception as exc:
-        log.error("[SLA] Échec envoi email → %s : %s", to_addr, exc)
+    sent = send_email(to_addr, subject, body_html)
+    if not sent:
+        log.warning("[SLA] Email non envoyé → %s (SMTP non configuré ou erreur)", to_addr)
 
 
 def _send_async(to_addr: str, subject: str, body_html: str) -> None:

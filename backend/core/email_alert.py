@@ -1,7 +1,5 @@
 from __future__ import annotations
-import logging, os, smtplib, threading, uuid, time
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import logging, os, threading, uuid, time
 from urllib.parse import quote
 from engine.pipeline import AnalysisResult
 
@@ -262,32 +260,13 @@ def _build_email_content(result: AnalysisResult, token: str, base_url: str):
 
 
 def _send_via_smtp(from_addr: str, to_addr: str, subject: str, body: str):
-    smtp_host = os.environ.get("ALERT_SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("ALERT_SMTP_PORT", "587"))
-    smtp_user = os.environ.get("ALERT_SMTP_USER", "")
-    smtp_pass = os.environ.get("ALERT_SMTP_PASSWORD", "")
-
-    if not smtp_user or not smtp_pass:
+    if not os.environ.get("ALERT_SMTP_USER") or not os.environ.get("ALERT_SMTP_PASSWORD"):
         log.error("SMTP credentials not configured")
         return False
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = from_addr
-    msg["To"]      = to_addr
-    msg.attach(MIMEText(body, "html", "utf-8"))
+    from core.email_service import send_email
 
-    try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as s:
-            s.ehlo()
-            s.starttls()
-            s.login(smtp_user, smtp_pass)
-            s.sendmail(from_addr, [to_addr], msg.as_string())
-        log.info("Email SMTP envoyé → %s", to_addr)
-        return True
-    except Exception as e:
-        log.error("Erreur SMTP: %s", e)
-        return False
+    return send_email(to_addr, subject, body, from_addr=from_addr)
 
 
 def _send_via_sendgrid(from_addr: str, to_addr: str, subject: str, body: str):

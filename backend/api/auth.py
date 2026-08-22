@@ -1,12 +1,9 @@
 import functools
 import logging
 import os
-import smtplib
 import threading
 import uuid
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from urllib.parse import quote, urlencode
 from flask import Blueprint, jsonify, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -238,24 +235,17 @@ def forgot_password():
 </div></body></html>"""
 
             smtp_host = os.environ.get("ALERT_SMTP_HOST", "")
-            smtp_port = int(os.environ.get("ALERT_SMTP_PORT", "587"))
             smtp_user = os.environ.get("ALERT_SMTP_USER", "")
-            smtp_pass = os.environ.get("ALERT_SMTP_PASSWORD", "")
-            from_addr = os.environ.get("ALERT_EMAIL_FROM", smtp_user)
 
             if smtp_host and smtp_user:
                 def _do_send():
                     try:
-                        msg = MIMEMultipart("alternative")
-                        msg["Subject"] = subject
-                        msg["From"]    = from_addr
-                        msg["To"]      = email
-                        msg.attach(MIMEText(body, "html", "utf-8"))
-                        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as s:
-                            s.ehlo()
-                            s.starttls()
-                            s.login(smtp_user, smtp_pass)
-                            s.sendmail(from_addr, [email], msg.as_string())
+                        from core.email_service import send_email
+
+                        if not send_email(email, subject, body):
+                            log.error("[FORGOT-PASSWORD] Envoi impossible vers %s (SMTP non configure ou erreur)", email)
+                            log.warning("[FORGOT-PASSWORD] Fallback dev: lien de reset -> %s", reset_link)
+                            return
                         log.info("[FORGOT-PASSWORD] Email envoye -> %s", email)
                     except Exception as e:
                         log.error("[FORGOT-PASSWORD] Erreur SMTP: %s", e)
