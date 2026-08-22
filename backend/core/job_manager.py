@@ -1,5 +1,22 @@
 """
 core/job_manager.py — Gestionnaire de tâches asynchrones pour Flux Monitor
+
+⚠️ NOTE ARCHITECTURE — il existe DEUX systèmes de jobs distincts, volontairement :
+  1. CE MODULE (JobManager) : comparaisons interactives « smart compare ».
+     API : /api/smart/run-async, /api/smart/jobs/<id>[​/result] (smart_compare_async.py).
+     Progression fine (STEPS + WebSocket), ThreadPoolExecutor(4), récupération au
+     démarrage (recover_jobs), TTL + expiration des résultats.
+     Statuts écrits en base : PENDING/RUNNING/SUCCESS/FAILED/EXPIRED
+     (re-mappés DONE/ERROR dans les réponses API).
+  2. Les helpers raw-SQL create/update/get_job_async (storage) utilisés par
+     POST /api/flux/comparer + GET /api/flux/jobs/<id> (flux_api.py) : analyses
+     de flux fire-and-forget, polling simple par le frontend, thread unique ou
+     file Azure. Statuts : PENDING/RUNNING/DONE/ERROR.
+
+Les deux partagent la MÊME table `jobs` avec des vocabulaires différents :
+ne pas fusionner sans migration (consommateurs frontend distincts,
+useAsyncJob.ts vs AsyncAnalysisProgress.tsx ; cleanup_jobs/recover_jobs
+raisonnent sur les statuts du système 1 uniquement — cf. REVIEW_DEEP.md).
 """
 from __future__ import annotations
 

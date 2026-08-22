@@ -6,6 +6,7 @@ Routes Flask pour l'upload, la comparaison et l'affichage des écarts.
 import os
 import uuid
 import json
+import shutil
 import threading
 import pandas as pd
 import tempfile
@@ -472,12 +473,8 @@ def _run_analysis_worker(
             storage.update_job_async(job_id, "ERROR", error=str(e))
 
         finally:
-            # 7. Supprimer les fichiers temporaires
-            for path in [path_cegid, path_oracle]:
-                try:
-                    os.remove(path)
-                except Exception:
-                    pass
+            # 7. Supprimer le répertoire temporaire complet (fichiers + dossier)
+            shutil.rmtree(os.path.dirname(path_cegid), ignore_errors=True)
 
 
 # ─────────────────────────────────────────────
@@ -591,6 +588,9 @@ def analyser_schema():
 
 # ─────────────────────────────────────────────
 # COMPARAISON ASYNC — endpoint principal
+# (Système de jobs n°1 : helpers raw-SQL create/update/get_job_async, statuts
+#  PENDING/RUNNING/DONE/ERROR — distinct du JobManager /api/smart/*, voir
+#  core/job_manager.py pour la note d'architecture.)
 # ─────────────────────────────────────────────
 
 @flux_bp.route("/comparer", methods=["POST"])
@@ -612,6 +612,7 @@ def comparer():
     cles    = [c.strip() for c in cles_param.split(",")]   if cles_param   else None
     valeurs = [v.strip() for v in valeurs_param.split(",")] if valeurs_param else None
 
+    tmp_dir = None
     try:
         tmp_dir = tempfile.mkdtemp()
         path_cegid  = os.path.join(tmp_dir, "file_cegid.csv")
@@ -619,55 +620,67 @@ def comparer():
         request.files["cegid"].save(path_cegid)
         request.files["oracle"].save(path_oracle)
     except Exception as e:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
         return jsonify({"erreur": f"Sauvegarde fichiers échouée : {str(e)}"}), 500
 
-    job_id  = str(uuid.uuid4())
-    db_path = current_app.config.get("LOCAL_DB_PATH", "instance/flux_monitor.db")
+    try:
+        job_id  = str(uuid.uuid4())
+        db_path = current_app.config.get("LOCAL_DB_PATH", "instance/flux_monitor.db")
 
-    from storage import get_storage
-    get_storage().create_job_async(
-        job_id=job_id, flux_id=flux_id, analyst=analyst,
-        blob_cegid=path_cegid, blob_oracle=path_oracle,
-    )
-
-    from config import settings
-
-    if settings.use_azure:
-        # ── Upload Blob + message Queue (pour la future Azure Function) ──
-        blob_path_cegid = blob_path_oracle = None
-        try:
-            from azure.storage.blob import BlobServiceClient
-            conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-            blob_client = BlobServiceClient.from_connection_string(conn_str)
-            container = blob_client.get_container_client("flux-uploads")
-
-            blob_path_cegid  = f"input/{flux_id}/{job_id}_cegid.csv"
-            blob_path_oracle = f"input/{flux_id}/{job_id}_oracle.csv"
-
-            with open(path_cegid, "rb") as fc:
-                container.upload_blob(blob_path_cegid, fc, overwrite=True)
-            with open(path_oracle, "rb") as fo:
-                container.upload_blob(blob_path_oracle, fo, overwrite=True)
-
-            from core.queue_client import enqueue_comparison_job
-            enqueue_comparison_job(
-                job_id=job_id, flux_id=flux_id,
-                blob_path_cegid=blob_path_cegid, blob_path_oracle=blob_path_oracle,
-                division=division, analyst=analyst,
-            )
-            log.info("[QUEUE] Message envoyé pour job=%s", job_id)
-        except Exception as e:
-            log.warning("[QUEUE] Envoi message échoué (non bloquant): %s", e)
-    else:
-        # Restauration du traitement local asynchrone par thread
-        app = current_app._get_current_object()
-        thread = threading.Thread(
-            target=_run_analysis_worker,
-            args=(app, job_id, flux_id, path_cegid, path_oracle, cles, valeurs, db_path, analyst),
-            daemon=True,
+        from storage import get_storage
+        get_storage().create_job_async(
+            job_id=job_id, flux_id=flux_id, analyst=analyst,
+            blob_cegid=path_cegid, blob_oracle=path_oracle,
         )
-        thread.start()
-        log.info("[WORKER] Thread d'analyse locale démarré pour job=%s", job_id)
+
+        from config import settings
+
+        if settings.use_azure:
+            # ── Upload Blob + message Queue (pour la future Azure Function) ──
+            blob_path_cegid = blob_path_oracle = None
+            try:
+                from azure.storage.blob import BlobServiceClient
+                conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+                blob_client = BlobServiceClient.from_connection_string(conn_str)
+                container = blob_client.get_container_client("flux-uploads")
+
+                blob_path_cegid  = f"input/{flux_id}/{job_id}_cegid.csv"
+                blob_path_oracle = f"input/{flux_id}/{job_id}_oracle.csv"
+
+                with open(path_cegid, "rb") as fc:
+                    container.upload_blob(blob_path_cegid, fc, overwrite=True)
+                with open(path_oracle, "rb") as fo:
+                    container.upload_blob(blob_path_oracle, fo, overwrite=True)
+
+                from core.queue_client import enqueue_comparison_job
+                enqueue_comparison_job(
+                    job_id=job_id, flux_id=flux_id,
+                    blob_path_cegid=blob_path_cegid, blob_path_oracle=blob_path_oracle,
+                    division=division, analyst=analyst,
+                )
+                log.info("[QUEUE] Message envoyé pour job=%s", job_id)
+            except Exception as e:
+                log.warning("[QUEUE] Envoi message échoué (non bloquant): %s", e)
+            finally:
+                # Les blobs font foi côté Azure Function — plus besoin des copies locales.
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+        else:
+            # Restauration du traitement local asynchrone par thread
+            # (le worker devient propriétaire du nettoyage de tmp_dir).
+            app = current_app._get_current_object()
+            thread = threading.Thread(
+                target=_run_analysis_worker,
+                args=(app, job_id, flux_id, path_cegid, path_oracle, cles, valeurs, db_path, analyst),
+                daemon=True,
+            )
+            thread.start()
+            log.info("[WORKER] Thread d'analyse locale démarré pour job=%s", job_id)
+    except Exception:
+        # Échec avant la prise en charge par le worker/la queue :
+        # personne d'autre ne nettoiera tmp_dir.
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
 
     return jsonify({
         "job_id":  job_id,
