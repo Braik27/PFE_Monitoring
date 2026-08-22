@@ -152,13 +152,9 @@ function FluxCard({ cfg, row, onNavigate }: { cfg: FluxCfg; row: HistRow | null;
                let IconEl = FLUX_ICON_MAP[cfg.flux_id?.toUpperCase() ?? '']
                if (!IconEl) {
                  const iconEmoji = cfg.icon ?? '📊'
-                 if (typeof iconEmoji === 'string' && ['⚡','✅','🚨','⚠️','📊','📈','📦','🏪','💰','📥','📤'].includes(iconEmoji)) {
-                   IconEl = { '⚡': Zap, '✅': CheckCircle, '🚨': AlertCircle, '⚠️': AlertTriangle, '📊': BarChart3, '📈': BarChart3, '📦': ShoppingCart, '🏪': ShoppingCart, '💰': Briefcase, '📥': ShoppingCart, '📤': ShoppingCart }[iconEmoji]
-                 }
+                 IconEl = ({ '⚡': Zap, '✅': CheckCircle, '🚨': AlertCircle, '⚠️': AlertTriangle, '📊': BarChart3, '📈': BarChart3, '📦': ShoppingCart, '🏪': ShoppingCart, '💰': Briefcase, '📥': ShoppingCart, '📤': ShoppingCart } as Record<string, LucideIcon>)[iconEmoji] ?? BarChart3
                }
-               return IconEl
-                 ? <IconEl size={22} style={{ color: cfg.color || '#cbd5e1' }} />
-                 : <span style={{ fontSize: 20 }}>{cfg.icon ?? '📊'}</span>
+               return <IconEl size={22} style={{ color: cfg.color || '#cbd5e1' }} />
              })()}
              <span>{cfg.flux_name}</span>
             <span style={{
