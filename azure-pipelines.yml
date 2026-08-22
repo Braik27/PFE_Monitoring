@@ -56,10 +56,48 @@ stages:
             displayName: Publish frontend build artifact
             artifact: frontend-dist
 
-  # ── Stage 2: Build & Push Docker Image ──────────────────────────
+  # ── Stage 2: Backend unit tests (parallel to Frontend) ──────────
+  # Runs BEFORE any Docker build/push: a red suite blocks the image.
+  - stage: Tests
+    displayName: Backend Tests
+    dependsOn: []
+    jobs:
+      - job: Pytest
+        displayName: Run pytest suite
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            displayName: Install Python 3.12
+            inputs:
+              versionSpec: "3.12"
+
+          - task: Cache@2
+            displayName: Cache pip downloads
+            inputs:
+              key: 'pip | "$(Agent.OS)" | backend/requirements.txt'
+              path: $(Pipeline.Workspace)/.pip
+          - script: pip config set global.cache-dir $(Pipeline.Workspace)/.pip
+            displayName: Point pip cache dir
+
+          # Full requirements (not a slim subset): keeps CI dependency
+          # parity with the Docker image; heavy wheels come from cache.
+          - script: |
+              pip install --upgrade pip
+              pip install -r backend/requirements.txt pytest
+            displayName: Install backend deps + pytest
+
+          - script: python -m pytest tests/ watcher/test_watcher_logic.py -q --tb=short
+            displayName: pytest (SLA + severity/alerts + watcher)
+
+  # ── Stage 3: Build & Push Docker Image ──────────────────────────
   - stage: Docker
     displayName: Docker Build & Push
-    dependsOn: Frontend
+    dependsOn:
+      - Frontend
+      - Tests
     jobs:
       - job: BuildDocker
         displayName: Build and push image
