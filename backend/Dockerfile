@@ -1,17 +1,28 @@
 # ══════════════════════════════════════════════════════════════
-# Dockerfile — Azure App Service (Linux)
-# Build : docker build -t flux-monitor .
-# Run   : docker run -p 8000:8000 --env-file .env flux-monitor
+# Dockerfile — Flux Monitor backend API
 #
-# In CI (pipeline): frontend/dist is pre-built and copied into
-#   the build context before `docker build`. The Node build is
-#   skipped automatically when the dist folder already exists.
-# Locally: Node.js is installed and frontend is built inside Docker.
+# Build context MUST be backend/ (not repo root):
+#   docker build -t flux-monitor .
+#   (from inside backend/, or `docker build -f backend/Dockerfile backend/`)
+#
+# Frontend: the SPA is expected pre-built at ./frontend/dist INSIDE
+# this context. Azure Pipelines injects it there before building.
+# Locally there is no Node stage anymore — run the Vite dev server
+# (npm run dev) or serve frontend/dist with the compose `frontend`
+# (nginx) service instead.
+#
+# Single-stage on purpose: torch/faiss/pandas are runtime
+# requirements, a builder stage would not shrink the final image.
 # ══════════════════════════════════════════════════════════════
 
-FROM python:3.12-slim
+# Pinned base (minor + OS), not :latest
+FROM python:3.12.8-slim-bookworm
 
-# Driver ODBC pour Azure SQL (pyodbc)
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Driver ODBC pour Azure SQL (pyodbc) — kept for STORAGE_BACKEND=azure parity
 RUN apt-get update && \
         apt-get install -y --no-install-recommends curl gnupg2 unixodbc-dev && \
         curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/microsoft-prod.gpg && \
@@ -22,28 +33,24 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# ── Backend deps ──
+# ── Backend deps (cached unless requirements change) ──
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Code source (inclut frontend/dist si prébuild CI) ──
+# ── Application code (+ frontend/dist when provided by CI) ──
 COPY . .
 
-# ── Frontend build (skippé si dist déjà présent) ──
-RUN if [ ! -d "frontend/dist" ] || [ -z "$(ls -A frontend/dist 2>/dev/null)" ]; then \
-        echo "📦 frontend/dist absent — installation de Node.js et build..."; \
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-        apt-get install -y nodejs && \
-        apt-get clean && \
-        cd frontend && npm ci && npm run build; \
-    else \
-        echo "✅ frontend/dist trouvé — build ignoré"; \
-    fi
+# Writable state dirs (mounted as volumes in compose)
+RUN mkdir -p /home/instance instance reports && \
+    useradd --uid 10001 --create-home --shell /usr/sbin/nologin fluxuser && \
+    chown -R fluxuser:fluxuser /app/instance /app/reports /home/instance
 
-# Dossier instance (SQLite) — écrasé par Azure Volume en prod
-RUN mkdir -p /home/instance instance
+USER fluxuser
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-8000}/health" || exit 1'
 
 # Use PORT env var (Azure sets this dynamically), fallback to 8000
 CMD gunicorn --bind "0.0.0.0:${PORT:-8000}" \

@@ -72,9 +72,11 @@ stages:
             displayName: Download frontend artifact
             artifact: frontend-dist
 
+          # Inject the pre-built SPA INSIDE the backend/ build context.
+          # The Dockerfile copies it to /app/frontend/dist via `COPY . .`.
           - script: |
-              mkdir -p frontend/dist
-              cp -r "$(Pipeline.Workspace)/frontend-dist/"* frontend/dist/
+              mkdir -p backend/frontend/dist
+              cp -r "$(Pipeline.Workspace)/frontend-dist/"* backend/frontend/dist/
             displayName: Inject pre-built frontend into build context
 
           - task: Docker@2
@@ -83,7 +85,7 @@ stages:
               command: buildAndPush
               repository: $(imageRepository)
               dockerfile: $(dockerfilePath)
-              buildContext: "$(Build.SourcesDirectory)"
+              buildContext: "$(Build.SourcesDirectory)/backend"
               containerRegistry: $(dockerRegistryServiceConnection)
               tags: |
                 $(tag)
