@@ -383,10 +383,18 @@ try:
         try:
             from core.sla_monitor import init_sla_scheduler
             from storage import get_storage
-            init_sla_scheduler(app, get_storage())
-            logging.getLogger(__name__).info(
-                "Scheduler SLA dynamique démarré (core/sla_monitor — remplace scheduler 4h fixe)"
-            )
+            # Infra switch: when a dedicated scheduler container runs
+            # scheduler_worker.py, set FLASK_EMBEDDED_SCHEDULER=0 so the
+            # web tier does not start a second SLA monitor (duplicate alerts).
+            if os.environ.get("FLASK_EMBEDDED_SCHEDULER", "1") != "0":
+                init_sla_scheduler(app, get_storage())
+                logging.getLogger(__name__).info(
+                    "Scheduler SLA dynamique démarré (core/sla_monitor — remplace scheduler 4h fixe)"
+                )
+            else:
+                logging.getLogger(__name__).info(
+                    "Scheduler SLA embarqué désactivé (FLASK_EMBEDDED_SCHEDULER=0) — délégué au conteneur scheduler"
+                )
         except Exception as se:
             logging.getLogger(__name__).error("Impossible de démarrer le planificateur SLA: %s", se)
 
