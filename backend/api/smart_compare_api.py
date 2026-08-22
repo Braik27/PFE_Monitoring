@@ -718,6 +718,7 @@ def smart_mappings():
 
 
 @smart_bp.get("/api/smart/test-ai")
+@require_auth
 def test_ai():
     try:
         from ai.llm_client import call_llm

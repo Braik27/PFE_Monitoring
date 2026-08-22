@@ -13,6 +13,5 @@ if __name__ == "__main__":
     print(f"\n{'='*50}")
     print(f"  >> Flux Monitor Platform v2.0")
     print(f"  >> http://localhost:{port}")
-    print(f"  >> Login : admin / admin123")
     print(f"{'='*50}\n")
     app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)

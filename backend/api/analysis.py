@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request, session, Response, send_file
 from engine.pipeline import AnalysisRequest, run_analysis
 from core.email_alert import send_alert_async
 from storage import get_storage
-from api.auth import require_auth
+from api.auth import require_auth, require_admin
 from storage.base import json_encode
 
 MAX_FILE_SIZE_MB = 20   # Limite à 20 Mégaoctets
@@ -560,7 +560,7 @@ def get_analysis(aid: int):
 
 
 @analysis_bp.delete("/api/history/<int:aid>")
-@require_auth
+@require_admin
 def delete_analysis(aid: int):
     get_storage().delete_analysis(aid)
     return jsonify({"ok": True})

@@ -1,11 +1,16 @@
 import logging, os, time as _time, pathlib, json
 from dotenv import load_dotenv
-from flask import Flask, send_from_directory, g as _g, jsonify
+from flask import Flask, send_from_directory, g as _g, jsonify, session, request
 from werkzeug.security import generate_password_hash
 from core.job_manager import get_job_manager
 
 
 load_dotenv()
+
+# ── Fail-closed : refuse de démarrer si la config requise est absente ────
+# (SECRET_KEY obligatoire partout ; ADMIN_USER/ADMIN_PASSWORD en production)
+from config import settings
+settings.validate()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +19,7 @@ logging.basicConfig(
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+app.secret_key = settings.flask.SECRET_KEY
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY  = True,
@@ -37,9 +42,23 @@ try:
 
     @sock.route("/ws/alerts")
     def ws_alerts(ws):
-        """WebSocket endpoint — pousse les nouvelles alertes vers le frontend."""
-        _ws_clients.add(ws)
+        """WebSocket endpoint — pousse les nouvelles alertes vers le frontend.
+
+        Handshake authentifié : la session Flask (cookie fm_session) doit
+        contenir un utilisateur ; sinon la connexion est refermée immédiatement.
+        """
         log = logging.getLogger("ws")
+        user = session.get("user") if session else None
+        if not user:
+            log.warning("Connexion WS refusée : non authentifiée (%s)", request.remote_addr if request else "?")
+            try:
+                ws.send(json.dumps({"type": "error", "message": "Authentification requise"}))
+                ws.close()
+            except Exception:
+                pass
+            return
+
+        _ws_clients.add(ws)
         log.info("Client WS connecté (%d total)", len(_ws_clients))
 
         def handle_client_message(msg):
@@ -317,17 +336,30 @@ def _bootstrap():
     db = get_storage()
     db.init_db()
     logging.getLogger(__name__).info("Database initialized/updated")
-    if not db.get_user("admin"):
-        admin_user = os.environ.get("ADMIN_USER", "admin")
-        admin_pass = os.environ.get("ADMIN_PASSWORD", "admin123")
-        db.save_user(admin_user, generate_password_hash(admin_pass), "admin")
-        logging.getLogger(__name__).info(f"Admin créé — {admin_user}")
 
-    if not db.get_user("watcher_agent"):
-        watcher_user = os.environ.get("WATCHER_USER", "watcher_agent")
-        watcher_pass = os.environ.get("WATCHER_PASSWORD", "watcher_pass_123")
-        db.save_user(watcher_user, generate_password_hash(watcher_pass), "analyst")
-        logging.getLogger(__name__).info(f"Technical user created — {watcher_user}")
+    # Aucun compte par défaut : les identifiants doivent venir de
+    # l'environnement (obligatoire en production — voir settings.validate()).
+    admin_user = os.environ.get("ADMIN_USER", "").strip()
+    admin_pass = os.environ.get("ADMIN_PASSWORD", "")
+    if admin_user and admin_pass:
+        if not db.get_user(admin_user):
+            db.save_user(admin_user, generate_password_hash(admin_pass), "admin")
+            logging.getLogger(__name__).info("Admin créé — %s", admin_user)
+    else:
+        logging.getLogger(__name__).warning(
+            "ADMIN_USER/ADMIN_PASSWORD non définis — aucun compte admin seedé."
+        )
+
+    watcher_user = os.environ.get("WATCHER_USER", "").strip()
+    watcher_pass = os.environ.get("WATCHER_PASSWORD", "")
+    if watcher_user and watcher_pass:
+        if not db.get_user(watcher_user):
+            db.save_user(watcher_user, generate_password_hash(watcher_pass), "analyst")
+            logging.getLogger(__name__).info("Technical user created — %s", watcher_user)
+    else:
+        logging.getLogger(__name__).info(
+            "WATCHER_USER/WATCHER_PASSWORD non définis — compte technique non créé."
+        )
 
     try:
         if not db.list_expected_flux():
@@ -371,6 +403,9 @@ except Exception as boot_error:
     logging.getLogger(__name__).critical(
         "⚠️  Échec du bootstrap — l'application démarre en mode dégradé : %s", boot_error
     )
+    # Fail-closed : en production, un bootstrap incomplet = refus de démarrer.
+    if settings.is_production:
+        raise
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

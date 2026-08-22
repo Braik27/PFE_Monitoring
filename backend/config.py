@@ -40,7 +40,7 @@ def _bool_env(key: str, default: bool = False) -> bool:
 
 @dataclass(frozen=True)
 class FlaskConfig:
-    SECRET_KEY:          str  = field(default_factory=lambda: _env("SECRET_KEY", "dev-secret-change-in-prod"))
+    SECRET_KEY:          str  = field(default_factory=lambda: _env("SECRET_KEY"))
     DEBUG:               bool = field(default_factory=lambda: _bool_env("FLASK_DEBUG", False))
     MAX_CONTENT_LENGTH:  int  = 200 * 1024 * 1024  # 200 MB
 
@@ -122,7 +122,12 @@ class AppConfig:
         return os.environ.get("ALLOW_GOOGLE_MOCK", "false").lower() in ("1", "true", "yes")
 
     def validate(self) -> None:
-        """Valide la config au démarrage — lève une exception si invalide."""
+        """Valide la config au démarrage — lève une exception si invalide (fail-closed)."""
+        if not self.flask.SECRET_KEY:
+            raise EnvironmentError(
+                "[CONFIG] SECRET_KEY est obligatoire (tous environnements). "
+                "Définis-la dans .env (local) ou App Settings (Azure) — aucun fallback n'est toléré."
+            )
         if self.use_azure:
             missing = self.azure.validate()
             if missing:
@@ -130,10 +135,14 @@ class AppConfig:
                     f"[CONFIG] Variables Azure manquantes : {', '.join(missing)}\n"
                     f"Définis-les dans .env (local) ou App Settings (Azure)."
                 )
-        if self.is_production and self.flask.SECRET_KEY == "dev-secret-change-in-prod":
-            raise EnvironmentError(
-                "[CONFIG] SECRET_KEY non définie en production."
-            )
+        if self.is_production:
+            admin_user = os.environ.get("ADMIN_USER", "").strip()
+            admin_password = os.environ.get("ADMIN_PASSWORD", "")
+            if not admin_user or not admin_password:
+                raise EnvironmentError(
+                    "[CONFIG] ADMIN_USER et ADMIN_PASSWORD sont obligatoires en production "
+                    "(aucun compte par défaut n'est créé)."
+                )
 
 
 # ══════════════════════════════════════════════════════════════════

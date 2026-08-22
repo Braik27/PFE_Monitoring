@@ -274,6 +274,10 @@ def google_login():
 def google_callback():
     mock = request.args.get("mock")
     if mock == "1":
+        # Backdoor désactivée par défaut : uniquement en développement ET si
+        # ALLOW_GOOGLE_MOCK=true (voir settings.allow_google_mock).
+        if not settings.allow_google_mock:
+            return jsonify({"error": "OAuth mock désactivé"}), 403
         email = request.args.get("email", "google-mock@timsfort.com")
         name = request.args.get("name", "Google Mock")
         user = get_storage().get_user_by_email(email)

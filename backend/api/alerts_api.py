@@ -15,7 +15,7 @@ POST   /api/alerts/<token>/escalate → escalade vers consultant
 import logging
 from flask import Blueprint, jsonify, request, session, redirect
 from storage import get_storage
-from api.auth import require_auth
+from api.auth import require_auth, require_admin
 import os, smtplib, threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -634,7 +634,7 @@ def update_status(token: str):
 
 
 @alerts_bp.delete("/api/alerts/<token>")
-@require_auth
+@require_admin
 def delete_alert(token: str):
     """Supprime définitivement une alerte et son historique de suivi."""
     storage = get_storage()
