@@ -63,6 +63,7 @@ services:
 
   scheduler:
     image: flux-monitor-backend   # reuses the image built by `backend`
+    build: ./backend              # self-sufficient: builds the image if missing
     command: python scheduler_worker.py
     env_file:
       - ./backend/.env
@@ -76,6 +77,10 @@ services:
     volumes:
       - instance-data:/app/instance
       - reports-data:/app/reports
+    # No HTTP server here -> disable the Dockerfile HEALTHCHECK
+    # (it probes :8000/health and would report unhealthy forever)
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   frontend:
