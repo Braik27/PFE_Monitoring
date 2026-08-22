@@ -860,7 +860,8 @@ def resolve_alert(token: str):
     Requirements:
     - User must have role >= analyst
     - Current status must allow transition to RESOLVED
-    - Comment (solution) is REQUIRED
+    - Comment (solution) is OPTIONAL — when empty, an auto audit comment is
+      recorded so the state machine's required-field guard stays satisfied
     - Optional: error_type and effectiveness for correction tracking
     """
     from core.alert_state_machine import transition_alert, InvalidTransitionError, ValidationError, PermissionError
@@ -887,7 +888,7 @@ def resolve_alert(token: str):
             alert_token=token,
             new_status="RESOLVED",
             actor_user=actor_user,
-            comment=comment,  # State machine requires this for RESOLVED
+            comment=comment or f"Statut → RESOLVED",  # Guard 3 requires non-empty; default mirrors update_status()
         )
     except (InvalidTransitionError, ValidationError, PermissionError) as e:
         # Return 409/422/403 based on error type

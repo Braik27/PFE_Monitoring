@@ -261,10 +261,7 @@ export default function Alerts() {
   }
 
   const resolveAlert = async () => {
-    if (!selected || !resolveComment.trim()) {
-      showToast('Commentaire requis pour résoudre', 'error')
-      return
-    }
+    if (!selected) return
     try {
       await api.post(`/api/alerts/${selected.token}/resolve`, { comment: resolveComment.trim() })
       showToast('Alerte résolue', 'success')
@@ -603,12 +600,12 @@ export default function Alerts() {
             </div>
             <div className="mbody">
               <div className="fg">
-                <label>Commentaire de résolution</label>
+                <label>Commentaire de résolution (optionnel)</label>
                 <textarea
                   rows={4}
                   value={resolveComment}
                   onChange={e => setResolveComment(e.target.value)}
-                  placeholder="Décrivez la résolution..."
+                  placeholder="Décrivez la résolution... (laisser vide si non applicable)"
                   style={{ resize: 'vertical', width: '100%', padding: '8px', borderRadius: 6, border: '1.5px solid var(--brd)', fontFamily: 'inherit', fontSize: 13 }}
                 />
               </div>
