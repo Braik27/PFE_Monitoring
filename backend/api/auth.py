@@ -105,6 +105,74 @@ def me():
     return jsonify(_current_user_payload())
 
 
+MAX_AVATAR_CHARS = 2_800_000  # ~2 Mo de binaire encodé en base64
+
+
+@auth_bp.put("/api/profile")
+@require_auth
+def update_profile():
+    data = request.get_json(silent=True) or {}
+    user_id = session["user"].get("id")
+    if not user_id:
+        return jsonify({"error": "Authentication required"}), 401
+
+    updates = {}
+    if "full_name" in data:
+        full_name = str(data.get("full_name") or "").strip()
+        if len(full_name) > 150:
+            return jsonify({"error": "Nom trop long (max 150 caractères)"}), 400
+        updates["full_name"] = full_name
+    if "email" in data:
+        email = str(data.get("email") or "").strip()
+        if email and ("@" not in email or len(email) > 150):
+            return jsonify({"error": "Email invalide"}), 400
+        updates["email"] = email
+    if "avatar" in data:
+        avatar = data.get("avatar")
+        if avatar is None or avatar == "":
+            updates["avatar"] = None
+        elif not isinstance(avatar, str) or not avatar.startswith("data:image/"):
+            return jsonify({"error": "Format d'avatar invalide"}), 400
+        elif len(avatar) > MAX_AVATAR_CHARS:
+            return jsonify({"error": "Image trop grande (max 2 Mo)"}), 413
+        else:
+            updates["avatar"] = avatar
+
+    get_storage().update_user_profile(user_id, **updates)
+
+    # Rafraîchir la session : /api/me et les décorateurs lisent session["user"]
+    db_user = get_storage().get_user_by_id(user_id) or {}
+    session["user"]["full_name"] = db_user.get("full_name", "")
+    session["user"]["email"] = db_user.get("email", "")
+
+    return jsonify({"ok": True, "user": _current_user_payload()})
+
+
+@auth_bp.put("/api/profile/password")
+@require_auth
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("current_password", "")
+    new_password = data.get("new_password", "")
+
+    user_id = session["user"].get("id")
+    username = session["user"].get("username", "")
+    if not user_id:
+        return jsonify({"error": "Authentication required"}), 401
+    if not current_password or not new_password:
+        return jsonify({"error": "Mot de passe actuel et nouveau mot de passe requis"}), 400
+    if len(new_password) < 6:
+        return jsonify({"error": "Le mot de passe doit contenir au moins 6 caractères"}), 400
+
+    db_user = get_storage().get_user(username)
+    if not db_user or not check_password_hash(db_user.get("password_hash", ""), current_password):
+        return jsonify({"error": "Mot de passe actuel incorrect"}), 401
+
+    get_storage().update_user_password(user_id, generate_password_hash(new_password))
+    log.info("Password changed — %s", username)
+    return jsonify({"ok": True})
+
+
 @auth_bp.get("/api/session")
 def session_info():
     if not session.get("user"):
