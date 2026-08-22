@@ -1,1 +1,44 @@
-README.md
+# ---- Secrets & environment ----
+.env
+.env.*
+*.env
+
+# ---- Python runtime ----
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# ---- Databases (project runs on MySQL; SQLite files are local artifacts) ----
+*.db
+*.db-shm
+*.db-wal
+
+# ---- Logs ----
+*.log
+
+# ---- Node / frontend build ----
+node_modules/
+frontend/dist/
+
+# ---- Generic build outputs ----
+build/
+dist/
+
+# ---- Runtime instance state (SQLite fallbacks, metrics, uploads) ----
+instance/
+backend/instance/
+
+# ---- Generated reports & FAISS vector index ----
+backend/reports/
+*.index
+
+# ---- Watcher runtime queue outputs ----
+watcher/watch_folder/SALES/processed/
+
+# ---- OS / editor noise ----
+.DS_Store
+*.tmp
