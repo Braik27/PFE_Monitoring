@@ -68,7 +68,11 @@ function SlaPanel({ alert }: { alert: Alert }) {
   const [remaining, setRemaining] = useState(0)
   const [totalMs, setTotalMs] = useState(DEFAULT_SLA_MS)
 
+  // RESOLVED/CLOSED : valeurs figées en base au moment de la résolution (storage.set_resolved)
+  const frozen = alert.status === 'RESOLVED' || alert.status === 'CLOSED'
+
   useEffect(() => {
+    if (frozen) return
     const createdAt = new Date(alert.created_at).getTime()
     const deadlineMs = alert.sla_deadline
       ? new Date(alert.sla_deadline).getTime()
@@ -90,9 +94,41 @@ function SlaPanel({ alert }: { alert: Alert }) {
     tick()
     const iv = setInterval(tick, 1000)
     return () => clearInterval(iv)
-  }, [alert.created_at, alert.sla_deadline, alert.sla_hours, alert.remaining_pct])
+  }, [frozen, alert.created_at, alert.sla_deadline, alert.sla_hours, alert.remaining_pct])
 
   const slaHoursLabel = alert.sla_hours ? `${alert.sla_hours}h` : '4h'
+
+  // Alerte résolue/clôturée : affichage statique du fait accompli, pas de compte à rebours
+  if (frozen) {
+    const pctVal = typeof alert.remaining_pct === 'number' ? Math.max(0, Math.min(100, alert.remaining_pct)) : null
+    const pctLabel = pctVal != null ? `${pctVal}%` : null
+    const msg = alert.sla_breached
+      ? `Alerte ${alert.status === 'CLOSED' ? 'clôturée' : 'résolue'} après dépassement du SLA de ${slaHoursLabel}.`
+      : pctLabel != null
+        ? `Alerte ${alert.status === 'CLOSED' ? 'clôturée' : 'résolue'} — il restait ${pctLabel} du SLA (${slaHoursLabel}) à la résolution.`
+        : `Alerte ${alert.status === 'CLOSED' ? 'clôturée' : 'résolue'} — SLA de ${slaHoursLabel}.`
+    return (
+      <div style={{ background: 'var(--s2)', border: '1.5px solid var(--brd)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt2)' }}>
+            ⏱ SLA {slaHoursLabel} — terminé
+          </span>
+          <span style={{
+            fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 20,
+            background: alert.sla_breached ? 'var(--red-lt)' : 'var(--grn-lt)',
+            color: alert.sla_breached ? 'var(--red)' : 'var(--green)',
+          }}>
+            {alert.sla_breached ? 'DÉPASSÉ' : pctLabel != null ? `${pctLabel} restant` : '—'}
+          </span>
+        </div>
+        <div style={{ height: 6, background: 'var(--brd)', borderRadius: 99, marginBottom: 4 }}>
+          <div style={{ height: '100%', borderRadius: 99, background: alert.sla_breached ? 'var(--red)' : 'var(--green)', width: (pctVal ?? 0)+'%' }} />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--mut)' }}>{msg}</div>
+      </div>
+    )
+  }
+
   const breached = Boolean(alert.sla_breached) || remaining <= 0
   const pct  = totalMs > 0 ? Math.max(0, Math.min(100, (remaining / totalMs) * 100)) : 0
   const over = breached
