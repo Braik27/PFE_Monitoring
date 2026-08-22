@@ -1,0 +1,80 @@
+# ── Framework Web et serveur ──
+flask>=3.0.0
+flask-sock>=0.7.0
+werkzeug>=3.0.0
+gunicorn>=21.0.0
+
+# ── Variables d'environnement ──
+python-dotenv>=1.0.0
+
+# ── Manipulation des données (Excel, CSV, DataFrames) ──
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlrd>=2.0.0
+pyarrow>=12.0.0
+
+# ── Bases de données et stockage cloud ──
+pyodbc>=5.0.0
+azure-storage-blob>=12.19.0
+
+# ── Requêtes HTTP et API ──
+requests>=2.31.0
+
+# ── Intelligence Artificielle / LLM ──
+
+# ── Email ──
+sendgrid>=6.0.0
+
+# ── Utilitaires et surveillance de fichiers ──
+watchdog>=3.0.0
+
+# ── Validation des données et analysis ──
+pandera>=0.20.0
+duckdb>=1.0.0
+
+# ── Monitoring Azure Application Insights ──
+azure-monitor-opentelemetry>=1.6.0
+
+# ════════════════════════════════════════════════════════════
+# NOUVELLES DÉPENDANCES RAG VECTORIEL — 100% GRATUITES
+# ════════════════════════════════════════════════════════════
+
+# Embeddings locaux CPU — modèle ~90MB téléchargé une fois
+sentence-transformers>=3.0.0
+
+# Index vectoriel FAISS — CPU uniquement, pas de GPU requis
+faiss-cpu>=1.8.0
+
+# NumPy requis par FAISS et sentence-transformers
+numpy>=1.26.0
+
+# Détection d'anomalies Machine Learning (Isolation Forest)
+scikit-learn>=1.4.0
+
+# ════════════════════════════════════════════════════════════
+# INFRASTRUCTURE ASYNCHRONE — Gestion des tâches et SLA
+# ════════════════════════════════════════════════════════════
+
+# Planificateur de tâches pour SLA monitor, scheduled jobs, etc.
+apscheduler>=3.10.0
+
+# File d'attente asynchrone et worker pour IA, email, reconciliation
+celery>=5.3.0
+
+# Cache et broker de messages pour Celery (remplace amqp/rabbitmq en dev)
+redis>=4.5.0
+
+# ── Migrations et Logging Structuré ──
+sqlalchemy>=2.0.0
+python-json-logger>=2.0.7
+pymysql>=1.1.0
+
+
+
+
+# ── Bases de données et stockage cloud ──
+pyodbc>=5.0.0
+azure-storage-blob>=12.19.0
+azure-storage-queue>=12.9.0          # 🆕 NOUVEAU - Queue Storage
+azure-core>=1.30.0                   # 🆕 NOUVEAU - Azure Core
+azure-identity>=1.15.0               # 🆕 NOUVEAU - Identité Azure

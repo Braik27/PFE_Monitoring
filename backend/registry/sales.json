@@ -1,0 +1,112 @@
+{
+  "flux_id": "SALES",
+  "flux_name": "Flux sales",
+  "description": "Transactions Cegid POS vers Oracle AR",
+  "active": true,
+  "key_columns": [
+    "DOC_NUM",
+    "ITEM_CODE",
+    "ITEM_QTY"
+  ],
+  "columns": [
+    {
+      "name": "HEADER_ID",
+      "type": "text",
+      "normalize": "strip_zeros",
+      "required": false
+    },
+    {
+      "name": "DOC_NUM",
+      "type": "text",
+      "normalize": "strip_zeros",
+      "required": true
+    },
+    {
+      "name": "LINE_NUMBER",
+      "type": "integer",
+      "normalize": "parse_number",
+      "required": false
+    },
+    {
+      "name": "REC_TYPE",
+      "type": "text",
+      "normalize": "strip_zeros",
+      "filter": "== 223",
+      "required": false
+    },
+    {
+      "name": "INV_ORG_CODE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    },
+    {
+      "name": "ITEM_CODE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": true
+    },
+    {
+      "name": "INVOICE_AMOUNT",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": false
+    },
+    {
+      "name": "ITEM_QTY",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": true
+    },
+    {
+      "name": "ITEM_PRICE",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": false
+    },
+    {
+      "name": "TRANSACTION_DATE",
+      "type": "date",
+      "normalize": "parse_date",
+      "format": "YYYY-MM-DDTHH:mm:ss",
+      "required": false
+    },
+    {
+      "name": "CURRENCY_CODE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    }
+  ],
+  "comparison_rules": [
+    {
+      "column": "TRANSACTION_DATE",
+      "tolerance": 0,
+      "severity": "WARNING"
+    },
+    {
+      "column": "HEADER_ID",
+      "tolerance": 0,
+      "severity": "WARNING"
+    },
+    {
+      "column": "INVOICE_AMOUNT",
+      "tolerance": 0.01,
+      "severity": "ERROR"
+    }
+  ],
+  "alert_threshold": {
+    "min_critiques": 0,
+    "max_warnings": 10
+  },
+  "display": {
+    "color": "#2460e8",
+    "icon": "📊",
+    "amount_column": "INVOICE_AMOUNT",
+    "date_column": "TRANSACTION_DATE"
+  },
+  "direction": "export",
+  "frequency": "Quotidienne à 08h00",
+  "objective": "Garantir que toute vente Cegid POS est présente dans Oracle AR",
+  "main_rule": "DOC_NUM + ITEM_CODE + ITEM_QTY (clé unique, insensible à l'ordre des lignes), montants en TND (parse_number) compares séparément via comparison_rules avec tolérance 0.01, filtrage REC_TYPE=223"
+}

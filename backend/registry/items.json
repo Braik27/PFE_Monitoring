@@ -1,0 +1,129 @@
+{
+  "flux_id": "ITEMS",
+  "name": "Flux Items",
+  "flux_name": "Flux Items",
+  "description": "Fichier articles Cegid vers Oracle Item Master. Matching sur ITEM_CODE uniquement (UNIT_PRICE est compare, pas utilise comme cle).",
+  "active": true,
+  "direction": "IMPORT",
+  "key_columns": [
+    "ITEM_CODE"
+  ],
+  "divisions": [],
+  "pre_processing": {
+    "cegid": {
+      "filter_column": "PREFIRE",
+      "filter_keep": "endswith_I",
+      "drop_after_filter": true,
+      "deduplicate_on": "ALL_BUSINESS_COLUMNS"
+    },
+    "oracle": {
+      "deduplicate_on": "ALL_BUSINESS_COLUMNS"
+    }
+  },
+  "columns": [
+    {
+      "name": "ITEM_CODE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": true
+    },
+    {
+      "name": "UNIT_PRICE",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": false
+    },
+    {
+      "name": "DESCRIPTION",
+      "type": "text",
+      "normalize": "strip_zeros",
+      "required": false,
+      "note": "Saisie manuelle par un employe, sujette a variations sans enjeu (fautes, espaces, abreviations). Colonne conservee pour affichage mais retiree de comparison_rules."
+    },
+    {
+      "name": "CURRENCY",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    },
+    {
+      "name": "ITEM_BARCODE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    },
+    {
+      "name": "ITEM_COLOR",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Retiree de comparison_rules a la demande - conservee pour affichage uniquement."
+    },
+    {
+      "name": "ITEM_SIZE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    },
+    {
+      "name": "BRAND",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Codes differents Cegid/Oracle pour la meme marque (ex: '088' vs '7406') - PAS COMPARABLE tant qu'il n'y a pas de table de correspondance. Colonne conservee pour affichage/debug uniquement, absente de comparison_rules."
+    },
+    {
+      "name": "CATEGORY",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Meme probleme de referentiel que BRAND - non comparable directement"
+    },
+    {
+      "name": "ITEM_TYPE",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Meme probleme de referentiel que BRAND - non comparable directement"
+    },
+    {
+      "name": "STATUS",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Meme probleme de referentiel que BRAND - non comparable directement"
+    },
+    {
+      "name": "ITEM_UOM",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false,
+      "note": "Abreviations differentes (PIECE vs PCS) - non comparable directement sans table de synonymes"
+    }
+  ],
+  "comparison_rules": [
+    {
+      "column": "UNIT_PRICE",
+      "tolerance": 0.01,
+      "severity": "CRITIQUE"
+    },
+    {
+      "column": "ITEM_BARCODE",
+      "tolerance": 0,
+      "severity": "WARNING"
+    }
+  ],
+  "alert_threshold": {
+    "min_critiques": 0,
+    "max_warnings": 20
+  },
+  "display": {
+    "color": "#3b82f6",
+    "icon": "📊",
+    "amount_column": "UNIT_PRICE",
+    "date_column": ""
+  },
+  "frequency": "Quotidienne à 08h00",
+  "alert_sla": {},
+  "consultant_email": ""
+}

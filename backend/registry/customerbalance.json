@@ -1,0 +1,78 @@
+{
+  "flux_id": "CUSTOMERBALANCE",
+  "flux_name": "Flux Customer Balance",
+  "description": "Import Customer Balance depuis Oracle vers Cegid",
+  "active": true,
+  "pre_processing": {
+    "cegid": {
+      "filter_column": "PrefiR",
+      "filter_keep": "endswith_I",
+      "drop_after_filter": true
+    }
+  },
+  "key_columns": [
+    "CUSTOMER_SITE_NUMBER"
+  ],
+  "columns": [
+    {
+      "name": "PrefiR",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": false
+    },
+    {
+      "name": "CUSTOMER_SITE_NAME",
+      "type": "text",
+      "normalize": "uppercase",
+      "required": true
+    },
+    {
+      "name": "CUSTOMER_SITE_NUMBER",
+      "type": "text",
+      "normalize": "strip_zeros",
+      "required": true
+    },
+    {
+      "name": "CREDIT_LIMIT",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": true
+    },
+    {
+      "name": "CREDIT_BALANCE",
+      "type": "decimal",
+      "normalize": "parse_number",
+      "required": true
+    }
+  ],
+  "comparison_rules": [
+    {
+      "column": "CUSTOMER_SITE_NAME",
+      "tolerance": 0,
+      "severity": "WARNING"
+    },
+    {
+      "column": "CREDIT_LIMIT",
+      "tolerance": 0.01,
+      "severity": "CRITIQUE"
+    },
+    {
+      "column": "CREDIT_BALANCE",
+      "tolerance": 0.01,
+      "severity": "CRITIQUE"
+    }
+  ],
+  "alert_threshold": { "min_critiques": 0 },
+  "display": {
+    "color": "#10b981",
+    "icon": "💰",
+    "amount_column": "CREDIT_BALANCE",
+    "date_column": ""
+  },
+  "direction": "import",
+  "frequency": "Quotidienne à 08h00",
+  "objective": "Importer les soldes client depuis Oracle vers Cegid — lignes I uniquement (R exclues)",
+  "main_rule": "Filtrer PrefiR=I avant comparaison. CUSTOMER_SITE_NUMBER strip_zeros. CREDIT_BALANCE/CREDIT_LIMIT tolerance 0.01",
+  "alert_sla": {},
+  "consultant_email": ""
+}

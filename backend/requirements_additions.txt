@@ -1,0 +1,4 @@
+# Dependencies à ajouter à requirements.txt
+
+pandera>=0.20.0
+duckdb>=1.0.0

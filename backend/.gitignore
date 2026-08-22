@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+*.db
+*.csv
+*.parquet
+*.xlsx
+*.xls
+.venv/
+venv/
+*.log
+*.tmp
+.DS_Store
+*.egg-info/
+dist/
+build/
