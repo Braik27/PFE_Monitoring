@@ -291,23 +291,35 @@ def _run_analysis_worker(
             anomalies_normalisees = [_normaliser_anomalie(e) for e in rapport["ecarts_enrichis"]]
 
             # 5. Construire le résultat final
-            # Concordance fiable : même formule que generic_comparator.py
-            # (lignes sans anomalie critique ni manquante / total)
-            n_cegid   = resultat["stats"].get("nb_lignes_cegid", 0)
-            n_oracle  = resultat["stats"].get("nb_lignes_oracle", 0)
-            n_base    = max(n_cegid, n_oracle, 1)
-            n_missing = (resultat["stats"].get("nb_absents_oracle", 0)
-                         + resultat["stats"].get("nb_absents_cegid", 0))
+            # Compteurs SEVERITE depuis le rapport détaillé (source de vérité
+            # unique Excel + dashboard), fallback sur analyser_rapport sinon.
             _n_critiques = _n_crit_from_detail if detailed_report else rapport["nb_critique"]
             _n_warnings  = _n_warn_from_detail if detailed_report else rapport["nb_warning"]
-            concordance = max(0.0, round((n_base - n_missing - _n_critiques - _n_warnings) / n_base * 100, 1))
+
+            # Taux de conformité : MÊME formule que le rapport Excel détaillé
+            # (detailed_report.py) — articles sans aucun écart / articles analysés.
+            # Un article est conforme si TOUTES ses colonnes comparées matchent.
+            if detailed_report:
+                n_ok_strict = sum(1 for r in detailed_report if r["STATUT"] == "OK")
+                total_rows  = len(detailed_report)
+                concordance = round(n_ok_strict / total_rows * 100, 1) if total_rows else 100.0
+            else:
+                # Fallback ancienne formule (pas de rapport détaillé disponible)
+                n_cegid   = resultat["stats"].get("nb_lignes_cegid", 0)
+                n_oracle  = resultat["stats"].get("nb_lignes_oracle", 0)
+                n_base    = max(n_cegid, n_oracle, 1)
+                n_missing = (resultat["stats"].get("nb_absents_oracle", 0)
+                             + resultat["stats"].get("nb_absents_cegid", 0))
+                concordance = max(0.0, round((n_base - n_missing - _n_critiques - _n_warnings) / n_base * 100, 1))
 
             result_data = {
                 "flux_id":        flux_id,
                 "stats":          resultat["stats"],
                 "schema_diff":    resultat["schema_diff"],
                 "cles_utilisees": resultat["cles_utilisees"],
-                "taux_conformite": rapport["taux_conformite"],
+                # Aligné sur le strict taux de conformité (avant : score pénalité
+                # arbitraire 100 - 5*crit - 1*warn d'agent_advisor.analyser_rapport)
+                "taux_conformite": concordance,
                 "resume":         rapport["resume"],
                 "action_globale": rapport["action_globale"],
                 "nb_critique":    _n_critiques,

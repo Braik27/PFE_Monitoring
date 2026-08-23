@@ -427,7 +427,7 @@ export default function Alerts() {
           {/* KPIs */}
           <div className={styles.detailKpis}>
             {[
-              { l: 'CONCORDANCE', v: `${selected.concordance ?? '—'}%`, c: 'var(--green)' },
+              { l: 'TAUX DE CONFORMITÉ', v: `${selected.concordance ?? '—'}%`, c: 'var(--green)' },
               { l: 'ÉTAT', v: concordanceBadge(selected.concordance_state, selected.concordance ?? 0).label, c: 'var(--txt)' },
               { l: 'CRITIQUES',   v: selected.n_critiques ?? '—', c: 'var(--red)' },
               { l: 'WARNINGS',    v: selected.n_warnings ?? '—', c: 'var(--orange)' },
@@ -602,7 +602,7 @@ export default function Alerts() {
                 <span>{STATUS_LABELS[a.status] ?? a.status}</span>
                 <span>{a.n_critiques ?? 0} critique(s)</span>
                 <span>{a.n_warnings ?? 0} warning(s)</span>
-                <span>{a.concordance ?? 0}% concordance</span>
+                <span>{a.concordance ?? 0}% conformité</span>
                 <span>{a.created_at ? new Date(a.created_at).toLocaleString('fr-FR') : ''}</span>
               </div>
             </div>

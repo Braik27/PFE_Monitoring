@@ -111,11 +111,21 @@ class PairResult:
 
     @property
     def concordance(self) -> float:
+        """Taux de conformité par ARTICLE (aligné sur detailed_report.py).
+
+        Une ligne est non conforme dès qu'elle porte au moins une anomalie
+        (valeur écartée, vide, ou absente de l'autre fichier) — et non une
+        pénalité par colonne en erreur. Plusieurs anomalies sur le même
+        article comptent pour UNE seule ligne non conforme.
+        """
         total = max(self.n_cegid, self.n_oracle)
         if total == 0:
             return 100.0
-        bad = self.n_missing_oracle + self.n_missing_cegid + self.n_critiques + self.n_warnings
-        return round(max(0.0, (total - bad) / total * 100), 1)
+        bad_keys = {
+            "||".join(f"{k}={v}" for k, v in sorted((a.key_values or {}).items()))
+            for a in self.anomalies
+        }
+        return round(max(0.0, (total - len(bad_keys)) / total * 100), 1)
 
     @property
     def top_error_columns(self) -> List[Dict]:
