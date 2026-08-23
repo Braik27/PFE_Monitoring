@@ -306,7 +306,24 @@ interface Ecart {
   conseil?: { severite?: string; badge?: string }
 }
 
+/** Vérifie res.ok + content-type avant tout téléchargement — évite de sauvegarder
+ *  une erreur JSON (404/500) sous forme de fichier .xlsx/.zip corrompu. */
+async function guardDownload(res: Response): Promise<{ blob: Blob; ext: 'xlsx' | 'zip' }> {
+  const ctype = res.headers.get('content-type') || ''
+  if (!res.ok || ctype.includes('application/json')) {
+    let msg = res.ok ? 'Réponse inattendue du serveur' : `Erreur ${res.status}`
+    try {
+      const j = await res.clone().json()
+      if (j && typeof j.error === 'string') msg = j.error
+    } catch { /* corps non JSON */ }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  return { blob, ext: ctype.includes('zip') ? 'zip' : 'xlsx' }
+}
+
 function AnalysisResult({ data }: { data: AsyncJobResult }) {
+  const { showToast } = useToast()
   const stats      = (data.stats ?? {}) as ResultStats
   const ecarts     = (data.ecarts ?? []) as Ecart[]
   const nb_crit    = data.nb_critique ?? 0
@@ -321,26 +338,30 @@ function AnalysisResult({ data }: { data: AsyncJobResult }) {
         `/api/analysis/${data.analysis_id}/export/excel`,
         { credentials: 'include' }
       )
-      const blob = await res.blob()
+      const { blob } = await guardDownload(res)
       const link = document.createElement('a')
       link.href  = URL.createObjectURL(blob)
       link.download = `analyse_${data.flux_id}_${data.analysis_id}.xlsx`
       link.click()
       URL.revokeObjectURL(link.href)
-    } catch { }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Erreur lors du téléchargement Excel', 'error')
+    }
   }
 
   // Télécharger rapport par division
   const downloadByDivision = async () => {
     try {
       const res = await fetch('/api/report/by-division', { credentials: 'include' })
-      const blob = await res.blob()
+      const { blob, ext } = await guardDownload(res)
       const link = document.createElement('a')
       link.href  = URL.createObjectURL(blob)
-      link.download = `rapport_divisions_${new Date().toISOString().slice(0,10)}.zip`
+      link.download = `rapport_divisions_${new Date().toISOString().slice(0,10)}.${ext}`
       link.click()
       URL.revokeObjectURL(link.href)
-    } catch { }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Erreur lors du téléchargement du rapport par division', 'error')
+    }
   }
 
   return (
@@ -375,13 +396,15 @@ function AnalysisResult({ data }: { data: AsyncJobResult }) {
               onClick={async () => {
                 try {
                   const res = await fetch('/api/report/daily', { credentials: 'include' })
-                  const blob = await res.blob()
+                  const { blob, ext } = await guardDownload(res)
                   const link = document.createElement('a')
                   link.href = URL.createObjectURL(blob)
-                  link.download = `rapport_daily_${new Date().toISOString().slice(0,10)}.xlsx`
+                  link.download = `rapport_daily_${new Date().toISOString().slice(0,10)}.${ext}`
                   link.click()
                   URL.revokeObjectURL(link.href)
-                } catch { }
+                } catch (e) {
+                  showToast(e instanceof Error ? e.message : 'Erreur lors du téléchargement du rapport du jour', 'error')
+                }
               }}
               style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
             >
