@@ -43,3 +43,5 @@ watcher/watch_folder/SALES/processed/
 # ---- OS / editor noise ----
 .DS_Store
 *.tmp
+
+backup_avant_phase7.sql
