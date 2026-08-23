@@ -37,11 +37,40 @@ interface Anomaly {
   explication?: string | null
 }
 
+/** Entrée d'historique — ⚠️ inféré du rendu (tracking list), pas d'un contrat backend. */
+interface TrackingEntry {
+  action?: string
+  status?: string
+  username?: string
+  user?: string
+  comment?: string
+  at?: string
+  created_at?: string
+}
+
+/**
+ * Réponse de GET /api/alerts/<token>/suggest — ⚠️ inféré du rendu du panneau
+ * « Suggestion IA », pas d'un contrat backend typé.
+ */
+interface AiSuggestion {
+  diagnostic?: string
+  ia_analyse?: string
+  ia_actions?: string[]
+  actions?: string[]
+  ia_prevention?: string
+  prevention?: string
+  confidence?: number
+  urgence?: string
+  ia_enrichi?: boolean
+}
+
+interface FluxOptionRow { flux_id?: string }
+
 interface Alert {
   id: string; token: string; flux_name: string; flux_id: string; division: string
   status: string; n_critiques: number; concordance: number; n_warnings: number
-  created_at: string; label?: string; analyst?: string; tracking?: any[]
-  ai_suggestion?: any; anomalies?: Anomaly[]
+  created_at: string; label?: string; analyst?: string; tracking?: TrackingEntry[]
+  ai_suggestion?: unknown; anomalies?: Anomaly[]
   sla_deadline?: string | null
   sla_hours?: number | null
   remaining_pct?: number | null
@@ -171,7 +200,7 @@ export default function Alerts() {
   const [fluxOptions, setFluxOptions] = useState<string[]>([])
   const [selected, setSelected] = useState<Alert | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiData, setAiData] = useState<any>(null)
+  const [aiData, setAiData] = useState<AiSuggestion | null>(null)
   const [resolveComment, setResolveComment] = useState('')
   const [resolveModal, setResolveModal] = useState(false)
   const [escalateModal, setEscalateModal] = useState(false)
@@ -183,14 +212,16 @@ export default function Alerts() {
 
   const loadFluxOptions = useCallback(async () => {
     try {
-      const res = await api.get('/api/flux')
+      const res = await api.get<FluxOptionRow[] | { fluxes?: FluxOptionRow[]; data?: FluxOptionRow[] }>('/api/flux')
       const data = res.data
+      const pickIds = (rows: FluxOptionRow[]) =>
+        rows.map(f => f.flux_id).filter((id): id is string => Boolean(id))
       const fluxes: string[] = Array.isArray(data)
-        ? data.map((f: any) => f.flux_id).filter(Boolean)
+        ? pickIds(data)
         : data?.fluxes
-          ? data.fluxes.map((f: any) => f.flux_id).filter(Boolean)
+          ? pickIds(data.fluxes)
           : data?.data
-            ? data.data.map((f: any) => f.flux_id).filter(Boolean)
+            ? pickIds(data.data)
             : []
       setFluxOptions(fluxes)
     } catch {
@@ -254,8 +285,8 @@ export default function Alerts() {
       showToast(`Statut mis à jour : ${STATUS_LABELS[status] ?? status}`, 'success')
       load()
       setSelected(s => s ? { ...s, status } : s)
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Erreur mise à jour'
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erreur mise à jour'
       showToast(msg, 'error')
     }
   }
@@ -267,8 +298,8 @@ export default function Alerts() {
       showToast('Alerte résolue', 'success')
       setResolveModal(false); setResolveComment('')
       load(); setSelected(null)
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Erreur résolution'
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erreur résolution'
       showToast(msg, 'error')
     }
   }
@@ -283,8 +314,8 @@ export default function Alerts() {
       })
       showToast('Alerte escaladée', 'success')
       setEscalateModal(false); setEscalateEmail(''); setEscalateReason(''); setEscalateComment('')
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || 'Erreur escalade', 'error')
+    } catch (err) {
+      showToast((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erreur escalade', 'error')
     }
   }
 
@@ -297,8 +328,8 @@ export default function Alerts() {
       if (selected?.token === deleteTarget.token) setSelected(null)
       setDeleteTarget(null)
       load()
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || 'Erreur suppression', 'error')
+    } catch (err) {
+      showToast((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erreur suppression', 'error')
     }
     finally { setDeleting(false) }
   }
@@ -489,11 +520,11 @@ export default function Alerts() {
                     </p>
                   )}
                   {/* Actions prioritaires */}
-                  {(aiData.ia_actions ?? aiData.actions)?.length > 0 && (
+                  {((aiData.ia_actions ?? aiData.actions)?.length ?? 0) > 0 && (
                     <div style={{ marginBottom: 8 }}>
                       <strong style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--mut)' }}>Actions recommandées</strong>
                       <ul style={{ paddingLeft: 0, listStyle: 'none', marginTop: 4 }}>
-                        {(aiData.ia_actions ?? aiData.actions).map((a: string, i: number) => (
+                        {(aiData.ia_actions ?? aiData.actions ?? []).map((a: string, i: number) => (
                           <li key={i} style={{ fontSize: 12, padding: '3px 0', display: 'flex', gap: 6 }}>
                             <span style={{ color: 'var(--purple)', fontWeight: 700 }}>→</span> {a}
                           </li>
@@ -523,17 +554,20 @@ export default function Alerts() {
             <div className="sblk" style={{ marginTop: 12 }}>
               <div className="sblk-h"><span style={{ fontSize: 12, fontWeight: 700 }}>📜 Historique</span></div>
               <div style={{ padding: '4px 14px 8px' }}>
-                {(selected.tracking ?? []).map((t: any, i: number) => (
-                  <div key={i} className={styles.trkItem}>
-                    <span className={styles.trkDot} />
-                    <span style={{ fontWeight: 700 }}>{STATUS_LABELS[t.action ?? t.status] ?? (t.action ?? t.status)}</span>
-                    <span style={{ color: 'var(--mut)', marginLeft: 4 }}>— {t.username ?? t.user ?? '?'}</span>
-                    {t.comment && <span style={{ color: 'var(--txt2)', marginLeft: 8, fontSize: 11 }}>« {t.comment} »</span>}
-                    <span style={{ marginLeft: 'auto', color: 'var(--mut)', fontSize: 11 }}>
-                      {(t.at ?? t.created_at) ? new Date(t.at ?? t.created_at).toLocaleString('fr-FR') : ''}
-                    </span>
-                  </div>
-                ))}
+                {(selected.tracking ?? []).map((t: TrackingEntry, i: number) => {
+                  const when = t.at ?? t.created_at
+                  return (
+                    <div key={i} className={styles.trkItem}>
+                      <span className={styles.trkDot} />
+                      <span style={{ fontWeight: 700 }}>{STATUS_LABELS[t.action ?? t.status ?? ''] ?? (t.action ?? t.status)}</span>
+                      <span style={{ color: 'var(--mut)', marginLeft: 4 }}>— {t.username ?? t.user ?? '?'}</span>
+                      {t.comment && <span style={{ color: 'var(--txt2)', marginLeft: 8, fontSize: 11 }}>« {t.comment} »</span>}
+                      <span style={{ marginLeft: 'auto', color: 'var(--mut)', fontSize: 11 }}>
+                        {when ? new Date(when).toLocaleString('fr-FR') : ''}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
