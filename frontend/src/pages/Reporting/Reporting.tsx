@@ -11,13 +11,26 @@ const PERIODS = [
   { key: 'year',  label: 'Cette année' },
 ]
 
+/** Ligne affichée dans les cartes reporting — ⚠️ inféré du rendu. */
+interface ReportingRow {
+  division?: string
+  label?: string
+  concordance_rate?: number
+  n_critiques?: number
+}
+
+interface ReportingState {
+  by_flux: Record<string, ReportingRow[]>
+  total: number
+}
+
 export default function Reporting() {
   const { showToast } = useToast()
   const [period, setPeriod] = useState('month')
   const [divFilter, setDivFilter] = useState('')
   const [fluxTabs, setFluxTabs] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState('')
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<ReportingState | null>(null)
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async () => {
@@ -28,17 +41,19 @@ export default function Reporting() {
       const res = await api.get('/api/reporting', { params })
       const rows = Array.isArray(res.data) ? res.data : []
       const d = buildReportingFromApi(rows as Record<string, unknown>[])
-      setData(d)
+      // buildReportingFromApi renvoie des lignes Record<string, unknown> ; on resserre
+      // vers la forme réellement rendue ci-dessous.
+      setData({ by_flux: d.by_flux as unknown as Record<string, ReportingRow[]>, total: d.total })
       const tabs: string[] = d.by_flux ? Object.keys(d.by_flux) : []
       setFluxTabs(tabs)
       if (tabs.length) setActiveTab((t) => (t && tabs.includes(t) ? t : tabs[0]))
-    } catch (err: any) {
+    } catch {
       try {
         const res2 = await api.get('/api/history', { params: { limit: 200 } })
         const raw = Array.isArray(res2.data) ? res2.data : []
         const list = raw.map((r: Record<string, unknown>) => mapHistoryRow(r))
-        const byFlux: Record<string, any[]> = {}
-        list.forEach((a: any) => {
+        const byFlux: Record<string, ReportingRow[]> = {}
+        list.forEach((a) => {
           const key = a.flux_name ?? a.flux_id
           if (!byFlux[key]) byFlux[key] = []
           byFlux[key].push(a)
@@ -102,7 +117,7 @@ export default function Reporting() {
           <div className={styles.rCard}>
             <h4>📊 Concordance — {activeTab}</h4>
             <p>Historique des analyses sur la période</p>
-            {(Array.isArray(currentData) ? currentData : []).slice(0, 10).map((a: any, i: number) => (
+            {(Array.isArray(currentData) ? currentData : []).slice(0, 10).map((a: ReportingRow, i: number) => (
               <div key={i} className={styles.bcRow}>
                 <span className={styles.bcLbl}>{a.division ?? a.label?.slice(0, 6) ?? `#${i+1}`}</span>
                 <div className={styles.bcBarW}>
@@ -120,7 +135,7 @@ export default function Reporting() {
             <p>Analyses regroupées par pays</p>
             <div className={styles.divGrid}>
               {Object.entries(
-                (Array.isArray(currentData) ? currentData : []).reduce((acc: any, a: any) => {
+                (Array.isArray(currentData) ? currentData : []).reduce<Record<string, { count: number; critiques: number; avg_conc: number[] }>>((acc, a) => {
                   const div = a.division || 'N/A'
                   if (!acc[div]) acc[div] = { count: 0, critiques: 0, avg_conc: [] }
                   acc[div].count++
@@ -128,7 +143,7 @@ export default function Reporting() {
                   acc[div].avg_conc.push(a.concordance_rate ?? 0)
                   return acc
                 }, {})
-              ).map(([div, s]: any) => (
+              ).map(([div, s]) => (
                 <div key={div} className={styles.divStat}>
                   <div className={styles.divStatName}>{div}</div>
                   <div className={styles.divStatV} style={{ color: concColor(Math.round(s.avg_conc.reduce((a: number, b: number) => a+b,0)/s.avg_conc.length)) }}>

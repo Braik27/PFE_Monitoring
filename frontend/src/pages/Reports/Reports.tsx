@@ -7,6 +7,23 @@ import styles from './Reports.module.css'
 const today = () => new Date().toISOString().slice(0, 10)
 const thisMonth = () => new Date().toISOString().slice(0, 7)
 
+/** Ligne du rapport CustomerBalance — ⚠️ inféré du rendu tableau, pas d'un contrat backend typé. */
+interface CustomerBalanceRow {
+  division?: string
+  ou?: string
+  nb_integrated?: number
+  nb_rejected?: number
+}
+
+/** Réponse GET /api/report/customerbalance — ⚠️ inféré des KPIs rendus. */
+interface CustomerBalanceReport {
+  total_integrated?: number
+  total_rejected?: number
+  total_lines?: number
+  total_anomalies?: number
+  rows?: CustomerBalanceRow[]
+}
+
 export default function Reports() {
   const { showToast } = useToast()
   const [rptDate, setRptDate] = useState(today())
@@ -14,15 +31,19 @@ export default function Reports() {
   const [rptMonth, setRptMonth] = useState(thisMonth())
   const [rptMonthDiv, setRptMonthDiv] = useState('')
   const [cbDate, setCbDate] = useState(today())
-  const [cbData, setCbData] = useState<any>(null)
+  const [cbData, setCbData] = useState<CustomerBalanceReport | null>(null)
   const [cbLoading, setCbLoading] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
+
+  /** Message d'erreur d'une réponse axios — même convention que Login.tsx. */
+  const axiosErrMsg = (err: unknown, fallback: string) =>
+    (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
 
   const download = async (type: string) => {
     setDownloading(type)
     try {
       let url = ''
-      let params: any = {}
+      let params: Record<string, string | undefined> = {}
 
       if (type === 'daily') {
         url = '/api/report/daily'
@@ -53,8 +74,8 @@ export default function Reports() {
       link.click()
       URL.revokeObjectURL(link.href)
       showToast('Téléchargement démarré !', 'success')
-    } catch (err: any) {
-      showToast(err?.response?.data?.error ?? 'Erreur lors du téléchargement', 'error')
+    } catch (err) {
+      showToast(axiosErrMsg(err, 'Erreur lors du téléchargement'), 'error')
     } finally {
       setDownloading(null)
     }
@@ -66,8 +87,8 @@ export default function Reports() {
     try {
       const res = await api.get('/api/report/customerbalance', { params: { date: cbDate } })
       setCbData(res.data)
-    } catch (err: any) {
-      showToast(err?.response?.data?.error ?? 'Erreur rapport CustomerBalance', 'error')
+    } catch (err) {
+      showToast(axiosErrMsg(err, 'Erreur rapport CustomerBalance'), 'error')
     } finally {
       setCbLoading(false)
     }
@@ -190,7 +211,7 @@ export default function Reports() {
                 <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--mut)', padding: 16 }}>
                   Cliquez sur « Actualiser » pour charger le rapport
                 </td></tr>
-              ) : (cbData?.rows ?? []).map((r: any, i: number) => {
+              ) : (cbData?.rows ?? []).map((r: CustomerBalanceRow, i: number) => {
                 const rejRate = r.nb_rejected && r.nb_integrated
                   ? Math.round((r.nb_rejected / (r.nb_integrated + r.nb_rejected)) * 100)
                   : 0
