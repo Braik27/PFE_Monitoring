@@ -22,7 +22,7 @@ interface FluxCfg {
   direction: string; frequency: string; objective: string
   main_rule: string; key_columns: string[]
   n_analyses: number; total_critiques: number; total_warnings: number
-  concordance_moy: number; last_analysis: any | null
+  concordance_moy: number; last_analysis: unknown | null
 }
 interface HistRow {
   id: number; flux_id: string; label: string; created_at: string
@@ -38,7 +38,7 @@ interface PairData {
   n_matched?: number; n_missing_oracle?: number; n_missing_cegid?: number
   n_critiques?: number; n_warnings?: number; concordance?: number
   top_error_columns?: { column: string; n_errors: number }[]
-  anomalies?: any[]
+  anomalies?: unknown[]
 }
 
 const DIV_FLAGS: Record<string, string> = {
@@ -99,7 +99,16 @@ function ConcordanceGauge({ score, totalFlux, totalCrit, totalWarn }: { score: n
   )
 }
 
-function KCard({ bar, ico, icoBg, lbl, val, valColor, sub, prog }: any) {
+function KCard({ bar, ico, icoBg, lbl, val, valColor, sub, prog }: {
+  bar: string
+  ico: React.ReactNode
+  icoBg: string
+  lbl: string
+  val: string | number
+  valColor?: string
+  sub?: string
+  prog?: number
+}) {
   return (
     <div className={styles.kcard}>
       <div className={styles.kbar} style={{ background: bar }} />

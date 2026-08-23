@@ -10,7 +10,7 @@ export type JobStatus = "idle" | "PENDING" | "RUNNING" | "DONE" | "ERROR";
 export interface AsyncJobResult {
   analysis_id?: number;
   flux_id?: string;
-  resume?: Record<string, unknown>;
+  resume?: string;
   stats?: Record<string, unknown>;
   nb_critique?: number;
   nb_warning?: number;

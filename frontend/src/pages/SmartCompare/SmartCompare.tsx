@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
-import AsyncAnalysisProgress from '../../components/AsyncAnalysisProgress'
+import AsyncAnalysisProgress, { type SmartJobResult } from '../../components/AsyncAnalysisProgress'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ColInfo  { nom: string; type: string; uniq_ratio: number; sample: string[] }
@@ -44,14 +44,31 @@ interface Result {
   n_warnings?:    number
   value_diff?:    number
   // anomalies
-  anomalies?: any[]
+  anomalies?: SmartAnomaly[]
   n_anomalies?: number
+  // rv() lit des clés dynamiques (alias backend) → index signature ouverte
+  [key: string]: unknown
 }
 
-// Lit le premier champ non-nul parmi les clés fournies
+/** Anomalie renvoyée par /api/smart/jobs — ⚠️ inféré du rendu tableau. */
+interface SmartAnomaly {
+  severity?: string
+  type?: string
+  key?: string | Record<string, unknown> | null
+  key_str?: string
+  val_cegid?: string | number | null
+  val_a?: string | number | null
+  val_oracle?: string | number | null
+  val_b?: string | number | null
+  message?: string
+  detail?: string
+}
+
+// Lit le premier champ non-nul parmi les clés fournies.
+// Result porte un index-signature car les clés varient selon la version backend.
 function rv(r: Result, ...keys: string[]): number {
   for (const k of keys) {
-    const v = (r as any)[k]
+    const v = r[k]
     if (v !== undefined && v !== null && v !== '') return Number(v)
   }
   return 0
@@ -175,8 +192,8 @@ export default function SmartCompare() {
       setMapping(data.mapping ?? [])
       setKeyCols(new Set<string>(data.key_cols ?? []))
       setStep(3)
-    } catch (e: any) {
-      showToast(e?.response?.data?.error ?? 'Erreur aperçu', 'error')
+    } catch (e) {
+      showToast((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur aperçu', 'error')
       setStep(1)
     } finally {
       setLoading(false)
@@ -211,8 +228,10 @@ export default function SmartCompare() {
     setIsComparing(true)
   }
 
-  const handleAsyncComplete = (data: any) => {
-    setResult(data)
+  const handleAsyncComplete = (data: SmartJobResult) => {
+    // SmartJobResult est la forme générique du composant de progression ;
+    // le rendu ci-dessous consomme Result (mêmes champs, typés).
+    setResult(data as unknown as Result)
     setStep(4)
     setIsComparing(false)
     setAsyncFormData(null)
@@ -507,7 +526,7 @@ export default function SmartCompare() {
                         </tr>
                       </thead>
                       <tbody>
-                        {result.anomalies!.slice(0, 200).map((a: any, i: number) => (
+                        {result.anomalies!.slice(0, 200).map((a: SmartAnomaly, i: number) => (
                           <tr key={i}>
                             <td>
                               <span className={`bdg ${

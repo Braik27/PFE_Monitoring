@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type DragEvent, type RefObject } from 'react'
 import { useToast } from '../../contexts/ToastContext'
-import { useAsyncJob } from '../../hooks/useAsyncJob'
+import { useAsyncJob, type AsyncJobResult } from '../../hooks/useAsyncJob'
 import api from '../../lib/api'
 import styles from './Analyze.module.css'
 
@@ -286,9 +286,29 @@ function UploadZone({ label, icon, file, onFile, onDrop, inputRef }: {
   )
 }
 
-function AnalysisResult({ data }: { data: any }) {
-  const stats      = data.stats ?? {}
-  const ecarts     = data.ecarts ?? []
+/** Stats agrégées de la carte résultat — ⚠️ inféré du rendu, pas d'un contrat backend typé. */
+interface ResultStats {
+  nb_lignes_cegid?: number | string
+  nb_lignes_oracle?: number | string
+  nb_ecarts?: number
+  nb_doublons?: number
+  nb_absents_oracle?: number
+  nb_absents_cegid?: number
+}
+
+/** Ligne d'écart du tableau résultat — ⚠️ inféré du rendu. */
+interface Ecart {
+  type_ecart?: string
+  article_id?: string | number
+  colonne?: string
+  valeur_cegid?: unknown
+  valeur_oracle?: unknown
+  conseil?: { severite?: string; badge?: string }
+}
+
+function AnalysisResult({ data }: { data: AsyncJobResult }) {
+  const stats      = (data.stats ?? {}) as ResultStats
+  const ecarts     = (data.ecarts ?? []) as Ecart[]
   const nb_crit    = data.nb_critique ?? 0
   const nb_warn    = data.nb_warning  ?? 0
   const color      = nb_crit === 0 ? 'var(--green)' : nb_crit < 10 ? 'var(--orange)' : 'var(--red)'
@@ -448,7 +468,7 @@ function AnalysisResult({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                {ecarts.slice(0, 100).map((e: any, i: number) => (
+                {ecarts.slice(0, 100).map((e: Ecart, i: number) => (
                   <tr key={i}>
                     <td>
                       <span className={`bdg ${
