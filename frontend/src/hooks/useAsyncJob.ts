@@ -2,11 +2,44 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 export type JobStatus = "idle" | "PENDING" | "RUNNING" | "DONE" | "ERROR";
 
+/**
+ * Contenu de `result` renvoyé par GET /api/flux/jobs/<id> quand status=DONE.
+ * ⚠️ Inféré depuis l'usage frontend (AnalysisResult dans Analyze.tsx) et la
+ * construction du résultat côté backend — pas depuis un contrat partagé typé.
+ */
+export interface AsyncJobResult {
+  analysis_id?: number;
+  flux_id?: string;
+  resume?: Record<string, unknown>;
+  stats?: Record<string, unknown>;
+  nb_critique?: number;
+  nb_warning?: number;
+  ecarts?: Array<Record<string, unknown>>;
+}
+
+/** Réponse de GET /api/flux/jobs/<id> (flux_api.get_job_async). */
+interface JobPollResponse {
+  job_id?: string;
+  flux_id?: string | null;
+  status?: JobStatus;
+  analyst?: string | null;
+  created_at?: string | null;
+  result?: AsyncJobResult | null;
+  error?: string | null;
+}
+
+/** Réponse de POST /api/flux/comparer. */
+interface JobSubmitResponse {
+  job_id?: string;
+  erreur?: string;
+  error?: string;
+}
+
 interface JobState {
   status: JobStatus;
   progress: number;
   stepLabel: string;
-  result: any | null;
+  result: AsyncJobResult | null;
   error: string | null;
   jobId: string | null;
 }
@@ -49,7 +82,7 @@ export function useAsyncJob() {
         });
         if (!res.ok) return;
 
-        const data = await res.json();
+        const data: JobPollResponse = await res.json();
         const status: JobStatus = data.status ?? "RUNNING";
 
         setState(prev => ({
@@ -89,13 +122,14 @@ export function useAsyncJob() {
         credentials: "include",
       });
 
-      const data = await res.json();
+      const data: JobSubmitResponse = await res.json();
 
       if (!res.ok) {
         throw new Error(data.erreur ?? data.error ?? "Erreur serveur");
       }
 
-      const jobId: string = data.job_id;
+      // Le backend renvoie toujours job_id sur une réponse 2xx (flux_api.comparer)
+      const jobId: string = data.job_id ?? "";
 
       setState(prev => ({
         ...prev,

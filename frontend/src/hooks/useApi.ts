@@ -258,7 +258,7 @@ export function useUserManagement() {
   })
 
   const createUser = useMutation({
-    mutationFn: async (form: Record<string, any>) => {
+    mutationFn: async (form: Record<string, unknown>) => {
       const res = await api.post('/api/admin/users', form)
       return res.data
     },
@@ -290,7 +290,7 @@ export function useFluxAdmin() {
   })
 
   const saveFlux = useMutation({
-    mutationFn: async ({ form, editing }: { form: any; editing?: string }) => {
+    mutationFn: async ({ form, editing }: { form: Record<string, unknown>; editing?: string }) => {
       const payload = { ...form, flux_name: form.flux_name ?? form.name }
       if (editing) {
         await api.put(`/api/flux/${editing}`, payload)

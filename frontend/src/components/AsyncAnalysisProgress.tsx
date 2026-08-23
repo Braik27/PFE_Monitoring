@@ -2,9 +2,23 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 type JobStatus = "idle" | "PENDING" | "RUNNING" | "DONE" | "ERROR";
 
+/**
+ * Résultat renvoyé par GET /api/smart/jobs/<id>/result (JobManager).
+ * ⚠️ Inféré depuis l'usage frontend (ce composant + SmartCompare.tsx) —
+ * les champs exacts du payload backend ne sont pas contractuels côté TS.
+ */
+export interface SmartJobResult {
+  ok?: boolean;
+  status?: string;
+  n_anomalies?: number;
+  anomalies?: Array<Record<string, unknown>>;
+  error?: string;
+  [key: string]: unknown;
+}
+
 interface AsyncAnalysisProgressProps {
   formData: FormData;
-  onComplete?: (result: any) => void;
+  onComplete?: (result: SmartJobResult) => void;
   onError?: (error: string) => void;
 }
 

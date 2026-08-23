@@ -62,7 +62,7 @@ export function useAlertsWebSocket() {
               const icon = nCritiques > 0 ? '🚨' : '⚠️'
               showToast(
                 `${icon} Nouvelle alerte sur ${fluxName}${nCritiques > 0 ? ` (${nCritiques} critique${nCritiques > 1 ? 's' : ''})` : ''} — Token: ${token.slice(0, 8)}…`,
-                severity as any,
+                severity,
                 icon,
                 () => {
                   window.location.href = `/alerts?token=${token}`
