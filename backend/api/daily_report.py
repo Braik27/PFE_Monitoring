@@ -74,6 +74,19 @@ def _div_from_label(label: str) -> str:
             return div
     return ""
 
+
+def _analysis_day(a: dict) -> str:
+    """
+    Date AAAA-MM-JJ d'une analyse, tolérante au type de created_at :
+    datetime.datetime / datetime.date (MySQL, stockage local) → strftime,
+    str ISO (backend Azure) → tronqué à 10 caractères.
+    Un slicing [:10] direct lève TypeError sur un datetime.
+    """
+    created = a.get("created_at", "")
+    if hasattr(created, "strftime"):
+        return created.strftime("%Y-%m-%d")
+    return str(created or "")[:10]
+
 def _get_analysis_division(a: dict) -> str:
     """
     Retourne la division d'une analyse.
@@ -376,7 +389,7 @@ def daily_report():
 
     # Récupère les analyses du jour
     all_a = get_storage().list_analyses(flux_id=flux_id or None, limit=1000)
-    day_a = [a for a in all_a if a.get("created_at", "")[:10] == date_str]
+    day_a = [a for a in all_a if _analysis_day(a) == date_str]
 
     # Filtre par division si demandé
     if division:
@@ -429,7 +442,7 @@ def report_by_division():
         return jsonify({"error": "Format date invalide — AAAA-MM-JJ"}), 400
 
     all_a = get_storage().list_analyses(flux_id=flux_id or None, limit=1000)
-    day_a = [a for a in all_a if a.get("created_at", "")[:10] == date_str]
+    day_a = [a for a in all_a if _analysis_day(a) == date_str]
 
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
@@ -497,7 +510,7 @@ def monthly_report():
         date_str  = current.strftime("%Y-%m-%d")
         day_label = current.strftime("%d-%m-%Y")
 
-        day_a = [a for a in all_a if a.get("created_at", "")[:10] == date_str]
+        day_a = [a for a in all_a if _analysis_day(a) == date_str]
         if division:
             day_a = [a for a in day_a if _get_analysis_division(a) == division]
 
