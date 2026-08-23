@@ -113,8 +113,8 @@ export default function Assistant() {
         setActiveConvId(r.data.conversation_id)
         loadConversations()
       }
-    } catch (err: any) {
-      showToast(err?.response?.data?.error ?? 'Erreur LLM', 'error')
+    } catch (err) {
+      showToast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur LLM', 'error')
       setMessages(prev => prev.slice(0, -1))
     } finally {
       setLoading(false)

@@ -3,11 +3,21 @@ import { useEffect, useState, useCallback } from 'react'
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
 
+/** Flux tel que rendu dans la carte admin — ⚠️ inféré du rendu + payload save(). */
+interface FluxCfg {
+  flux_id: string
+  name?: string
+  flux_name?: string
+  direction?: string
+  key_columns?: string[]
+  divisions?: string[]
+}
+
 export default function FluxAdmin() {
   const { showToast } = useToast()
-  const [fluxes, setFluxes] = useState<any[]>([])
+  const [fluxes, setFluxes] = useState<FluxCfg[]>([])
   const [modal, setModal] = useState(false)
-  const [editing, setEditing] = useState<any>(null)
+  const [editing, setEditing] = useState<FluxCfg | null>(null)
   const [form, setForm] = useState({ flux_id: '', name: '', direction: 'EXPORT', key_columns: '', divisions: '' })
 
   const load = useCallback(async () => {
@@ -20,11 +30,11 @@ export default function FluxAdmin() {
 
   useEffect(() => { load() }, [load])
 
-  const openModal = (flux?: any) => {
+  const openModal = (flux?: FluxCfg) => {
     if (flux) {
       setEditing(flux)
       setForm({
-        flux_id: flux.flux_id, name: flux.name ?? flux.flux_name, direction: String(flux.direction ?? 'EXPORT').toUpperCase(),
+        flux_id: flux.flux_id ?? '', name: flux.name ?? flux.flux_name ?? '', direction: String(flux.direction ?? 'EXPORT').toUpperCase(),
         key_columns: (flux.key_columns ?? []).join(', '),
         divisions: (flux.divisions ?? []).join(', '),
       })
@@ -50,7 +60,7 @@ export default function FluxAdmin() {
       }
       showToast('Flux sauvegardé', 'success')
       setModal(false); load()
-    } catch (e: any) { showToast(e?.response?.data?.error ?? 'Erreur', 'error') }
+    } catch (e) { showToast((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur', 'error') }
   }
 
   const del = async (id: string) => {
@@ -59,7 +69,7 @@ export default function FluxAdmin() {
     catch { showToast('Erreur suppression', 'error') }
   }
 
-  const F = (p: any) => (
+  const F = (p: { field: keyof typeof form; label: string; type?: 'select'; placeholder?: string }) => (
     <div className="fg">
       <label>{p.label}</label>
       {p.type === 'select'
@@ -93,13 +103,13 @@ export default function FluxAdmin() {
               <span className={`bdg ${String(f.direction).toUpperCase() === 'EXPORT' ? 'b-b' : 'b-p'}`} style={{ fontSize: 10 }}>{String(f.direction).toUpperCase()}</span>
             </div>
             <div style={{ padding: '12px 14px' }}>
-              {f.key_columns?.length > 0 && (
+              {(f.key_columns?.length ?? 0) > 0 && (
                 <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 6 }}>
-                  Clés : {f.key_columns.map((k: string) => <span key={k} style={{ background: 'var(--blu-lt)', color: 'var(--blue)', fontSize: 10, padding: '1px 6px', borderRadius: 4, marginRight: 4, fontFamily: 'var(--mono)' }}>{k}</span>)}
+                  Clés : {(f.key_columns ?? []).map((k: string) => <span key={k} style={{ background: 'var(--blu-lt)', color: 'var(--blue)', fontSize: 10, padding: '1px 6px', borderRadius: 4, marginRight: 4, fontFamily: 'var(--mono)' }}>{k}</span>)}
                 </div>
               )}
-              {f.divisions?.length > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--mut)' }}>Divisions : {f.divisions.join(', ')}</div>
+              {(f.divisions?.length ?? 0) > 0 && (
+                <div style={{ fontSize: 11, color: 'var(--mut)' }}>Divisions : {(f.divisions ?? []).join(', ')}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, padding: '8px 14px', borderTop: '1px solid var(--brd)', background: 'var(--s2)' }}>

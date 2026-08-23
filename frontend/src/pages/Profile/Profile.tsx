@@ -46,8 +46,8 @@ export default function Profile() {
       await refreshUser()
       setAvatarBase64(null)
       showToast('Profil mis à jour', 'success')
-    } catch (err: any) {
-      showToast(err?.response?.data?.error ?? 'Erreur lors de la mise à jour', 'error')
+    } catch (err) {
+      showToast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur lors de la mise à jour', 'error')
     } finally {
       setSavingProfile(false)
     }
@@ -68,8 +68,8 @@ export default function Profile() {
       await api.put('/api/profile/password', { current_password: oldPwd, new_password: newPwd })
       showToast('Mot de passe modifié avec succès', 'success')
       setOldPwd(''); setNewPwd(''); setConfirmPwd('')
-    } catch (err: any) {
-      showToast(err?.response?.data?.error ?? 'Erreur lors du changement', 'error')
+    } catch (err) {
+      showToast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur lors du changement', 'error')
     } finally {
       setSavingPwd(false)
     }

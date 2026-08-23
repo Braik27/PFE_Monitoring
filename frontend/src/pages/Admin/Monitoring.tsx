@@ -25,7 +25,13 @@ interface FluxStat {
   total_critiques: number
   total_warnings: number
   concordance_moy: number
-  last_analysis: any | null
+  last_analysis: unknown | null
+}
+
+/** Champs de paire utilisés pour les totaux Cegid/Oracle — ⚠️ inféré du rendu. */
+interface PairTotals {
+  n_cegid?: number
+  n_oracle?: number
 }
 
 interface AnalysisRow {
@@ -41,7 +47,7 @@ interface AnalysisRow {
     total_critiques?: number
     total_warnings?: number
     total_anomalies?: number
-    pairs?: any[]
+    pairs?: PairTotals[]
   }
 }
 
@@ -374,8 +380,8 @@ export default function Monitoring() {
                   : '—'
                 
                 const pairs = row.summary?.pairs ?? []
-                const totCegid = pairs.reduce((acc: number, p: any) => acc + (p.n_cegid ?? 0), 0)
-                const totOracle = pairs.reduce((acc: number, p: any) => acc + (p.n_oracle ?? 0), 0)
+                const totCegid = pairs.reduce((acc: number, p: PairTotals) => acc + (p.n_cegid ?? 0), 0)
+                const totOracle = pairs.reduce((acc: number, p: PairTotals) => acc + (p.n_oracle ?? 0), 0)
                 const recordCount = totCegid > 0 ? `${totCegid} Cegid / ${totOracle} Oracle` : 'Pas de lignes'
 
                 return (

@@ -3,9 +3,21 @@ import { useEffect, useState, useCallback } from 'react'
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
 
+/** Utilisateur tel que rendu dans le tableau admin — ⚠️ inféré du rendu. */
+interface AdminUser {
+  id: number
+  username: string
+  name?: string
+  email?: string
+  role?: string
+  n_analyses?: number
+  n_pending_alerts?: number
+  n_alerts?: number
+}
+
 export default function Users() {
   const { showToast } = useToast()
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ username: '', password: '', name: '', email: '', role: 'analyst' })
 
@@ -31,7 +43,7 @@ export default function Users() {
       setModal(false)
       setForm({ username: '', password: '', name: '', email: '', role: 'analyst' })
       load()
-    } catch (e: any) { showToast(e?.response?.data?.error ?? 'Erreur', 'error') }
+    } catch (e) { showToast((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erreur', 'error') }
   }
 
   const del = async (u: { id: number; username: string }) => {
@@ -68,7 +80,7 @@ export default function Users() {
                   <td>{u.name ?? '—'}</td>
                   <td style={{ fontSize: 11 }}>{u.email ?? '—'}</td>
                   <td>
-                    <span style={{ color: ROLE_COLORS[u.role] ?? '#94a3b8', fontWeight: 700, fontSize: 12 }}>
+                    <span style={{ color: ROLE_COLORS[u.role ?? ''] ?? '#94a3b8', fontWeight: 700, fontSize: 12 }}>
                       {u.role}
                     </span>
                   </td>
@@ -104,7 +116,7 @@ export default function Users() {
                   <div className="fg" key={f}>
                     <label>{l}</label>
                     <input type={t ?? 'text'} placeholder={p}
-                      value={(form as any)[f]}
+                      value={form[f as keyof typeof form]}
                       onChange={e => setForm(fm => ({ ...fm, [f]: e.target.value }))}
                     />
                   </div>

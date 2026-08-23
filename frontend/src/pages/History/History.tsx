@@ -9,7 +9,7 @@ const DIVISION_FLAGS: Record<string, string> = { KSA: '🇸🇦', KWT: '🇰🇼
 
 export default function History() {
   const { showToast } = useToast()
-  const [analyses, setAnalyses] = useState<any[]>([])
+  const [analyses, setAnalyses] = useState<ReturnType<typeof mapHistoryRow>[]>([])
   const [total, setTotal] = useState(0)
   const [fluxFilter, setFluxFilter] = useState('')
   const [divFilter, setDivFilter] = useState('')
@@ -19,7 +19,7 @@ export default function History() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { limit: 100 }
+      const params: Record<string, string | number> = { limit: 100 }
       if (fluxFilter) params.flux_id = fluxFilter
       if (divFilter)  params.division = divFilter
       const res = await api.get('/api/history', { params })
@@ -27,7 +27,7 @@ export default function History() {
       const list = raw.map((r) => mapHistoryRow(r as Record<string, unknown>))
       setAnalyses(list)
       setTotal(res.data.total ?? list.length)
-      setFluxOptions([...new Set(list.map((a: any) => a.flux_id).filter(Boolean))] as string[])
+      setFluxOptions([...new Set(list.map((a) => a.flux_id).filter(Boolean))])
     } catch { showToast('Erreur chargement historique', 'error') }
     finally { setLoading(false) }
   }, [fluxFilter, divFilter, showToast])
