@@ -391,25 +391,6 @@ function AnalysisResult({ data }: { data: AsyncJobResult }) {
             >
               🗂 Rapport par division
             </button>
-            <button
-              className="btn bsm"
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/report/daily', { credentials: 'include' })
-                  const { blob, ext } = await guardDownload(res)
-                  const link = document.createElement('a')
-                  link.href = URL.createObjectURL(blob)
-                  link.download = `rapport_daily_${new Date().toISOString().slice(0,10)}.${ext}`
-                  link.click()
-                  URL.revokeObjectURL(link.href)
-                } catch (e) {
-                  showToast(e instanceof Error ? e.message : 'Erreur lors du téléchargement du rapport du jour', 'error')
-                }
-              }}
-              style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              📅 Rapport du jour
-            </button>
           </div>
         </div>
 
