@@ -14,9 +14,11 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `role` VARCHAR(50) NOT NULL DEFAULT 'analyst',
     `email` VARCHAR(150) DEFAULT '',
-    `avatar` VARCHAR(255) DEFAULT '',
+    `avatar` LONGTEXT,
     `full_name` VARCHAR(150) DEFAULT '',
     `active` TINYINT DEFAULT 1,
+    `reset_token` VARCHAR(255) NULL,
+    `reset_token_expires` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -101,6 +103,11 @@ CREATE TABLE IF NOT EXISTS `user_patterns` (
 -- SILVER (Données nettoyées, suivi opérationnel et alertes)
 -- ---------------------------------------------------------------------
 
+-- NOTE : les colonnes flux_type / severity_class / expected_hour ci-dessous
+-- reprennent les largeurs réellement créées sur une base neuve par
+-- storage/local.py (_create_schema puis _ensure_columns). Une version plus
+-- large existe dans _migrate_alerts_schema mais ne s'applique qu'aux vieilles
+-- bases où la migration est passée avant le premier create.
 CREATE TABLE IF NOT EXISTS `alerts` (
     `id` INT PRIMARY KEY AUTO_INCREMENT,
     `token` VARCHAR(100) NOT NULL UNIQUE,
@@ -118,6 +125,20 @@ CREATE TABLE IF NOT EXISTS `alerts` (
     `sla_deadline` VARCHAR(100) NULL,
     `sla_hours` DOUBLE NULL,
     `remaining_pct` DOUBLE NULL,
+    -- Modèle double-statut (workflow_status / sla_status), cf. _migrate_alerts_schema
+    `workflow_status` VARCHAR(50) DEFAULT NULL,
+    `sla_status` VARCHAR(50) DEFAULT 'ON_TIME',
+    `severity` VARCHAR(50) DEFAULT NULL,
+    `escalated_by` VARCHAR(100) DEFAULT NULL,
+    `escalated_to` VARCHAR(255) DEFAULT NULL,
+    `escalated_at` DATETIME DEFAULT NULL,
+    `resolved_by` VARCHAR(100) DEFAULT NULL,
+    `resolved_at` DATETIME DEFAULT NULL,
+    `breach_email_sent` TINYINT DEFAULT 0,
+    `breach_report_sent` TINYINT DEFAULT 0,
+    `sla_warning_sent` TINYINT DEFAULT 0,
+    `ignore_notification_sent` TINYINT DEFAULT 0,
+    `concordance_state` VARCHAR(20) DEFAULT NULL,
     `flux_type` VARCHAR(50) NULL,
     `severity_class` VARCHAR(20) NULL,
     `detected_at` VARCHAR(100) NULL,
