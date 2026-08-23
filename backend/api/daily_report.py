@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, send_file
 from api.auth import require_auth
 from storage import get_storage
+from engine.division_splitter import detect_division_from_value
 
 report_bp = Blueprint("report", __name__)
 
@@ -50,6 +51,8 @@ C_BLACK  = "FF000000"
 C_GREY   = "FF595959"
 
 # ── Mapping divisions ─────────────────────────────────────────────────
+# Détection : table canonique engine/division_splitter.py (OU_CODE_MAP +
+# TEXT_KEYWORDS, dérivée d'OPERATING_UNIT_CODE). Affichage : noms clients.
 DIV_LABELS = {
     "DOHA": "🇶🇦 ABA Luxury Doha",
     "KWT":  "🇰🇼 ABA WATCHES AND JEWELRY Luxury Kuwait",
@@ -58,21 +61,9 @@ DIV_LABELS = {
     "GLOBAL":"Toutes divisions",
 }
 
-# Mots-clés pour extraire une division d'un label
-_DIV_KW = [
-    ("KWAIT","KWT"),("KUWAIT","KWT"),("KWT","KWT"),
-    ("DOHA","DOHA"),("DAW7A","DOHA"),("DAWHA","DOHA"),("QATAR","DOHA"),
-    ("PSC","KSA"),("KSA","KSA"),("SAUDI","KSA"),
-    ("SPG","SPG"),("SINGAPORE","SPG"),("PSG","SPG"),
-]
-
-def _div_from_label(label: str) -> str:
-    """Extrait une division depuis un label d'analyse."""
-    up = str(label or "").upper().replace("-"," ").replace("_"," ")
-    for kw, div in _DIV_KW:
-        if kw in up:
-            return div
-    return ""
+# Alias d'affichage : le détecteur canonique émet "DAW7A" pour Qatar/Doha,
+# le vocabulaire client (frontend, rapports) est "DOHA".
+_DIV_ALIASES = {"DAW7A": "DOHA"}
 
 
 def _analysis_day(a: dict) -> str:
@@ -87,20 +78,35 @@ def _analysis_day(a: dict) -> str:
         return created.strftime("%Y-%m-%d")
     return str(created or "")[:10]
 
-def _get_analysis_division(a: dict) -> str:
+def _normalize_div(div: str) -> str:
+    """Applique les alias d'affichage (DAW7A → DOHA)."""
+    d = (div or "").strip().upper()
+    return _DIV_ALIASES.get(d, d)
+
+
+def _analysis_divisions(a: dict) -> list:
     """
-    Retourne la division d'une analyse.
-    Priorité : summary.division → summary.divisions_found[0] → label → GLOBAL
+    Toutes les divisions d'une analyse — regroupement possible dans
+    plusieurs fichiers si l'analyse couvre plusieurs divisions.
+
+    Priorité : summary.division + summary.divisions_found (dérivés
+    d'OPERATING_UNIT_CODE à l'analyse via division_splitter) → label.
+    Retourne ["GLOBAL"] si rien de détecté.
     """
-    s = a.get("summary", {})
-    d = (s.get("division") or "").strip().upper()
-    if d and d != "GLOBAL":
-        return d
-    found = [x for x in (s.get("divisions_found") or []) if x and x != "GLOBAL"]
-    if found:
-        return found[0]
-    d = _div_from_label(a.get("label", ""))
-    return d or "GLOBAL"
+    s = a.get("summary", {}) or {}
+    divs: list = []
+
+    def _add(raw) -> None:
+        d = _normalize_div(str(raw or ""))
+        if d and d != "GLOBAL" and d not in divs:
+            divs.append(d)
+
+    _add(s.get("division"))
+    for x in (s.get("divisions_found") or []):
+        _add(x)
+    if not divs:
+        _add(detect_division_from_value(a.get("label", "")) or "")
+    return divs or ["GLOBAL"]
 
 
 # ── Helpers Excel ─────────────────────────────────────────────────────
@@ -393,7 +399,8 @@ def daily_report():
 
     # Filtre par division si demandé
     if division:
-        day_a = [a for a in day_a if _get_analysis_division(a) == division]
+        division = _normalize_div(division)
+        day_a = [a for a in day_a if division in _analysis_divisions(a)]
 
     if not day_a:
         return jsonify({
@@ -447,11 +454,12 @@ def report_by_division():
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
 
-    # Groupe les analyses par division
+    # Groupe les analyses par division — une analyse multi-divisions
+    # apparaît dans chaque fichier de division concerné
     groups: dict[str, list] = {}
     for a in day_a:
-        div = _get_analysis_division(a)
-        groups.setdefault(div, []).append(a)
+        for div in _analysis_divisions(a):
+            groups.setdefault(div, []).append(a)
 
     day_label = target_date.strftime("%d-%m-%Y")
 
@@ -512,7 +520,8 @@ def monthly_report():
 
         day_a = [a for a in all_a if _analysis_day(a) == date_str]
         if division:
-            day_a = [a for a in day_a if _get_analysis_division(a) == division]
+            division_n = _normalize_div(division)
+            day_a = [a for a in day_a if division_n in _analysis_divisions(a)]
 
         if day_a:
             ws = wb.create_sheet(title=day_label)
@@ -539,7 +548,7 @@ def list_divisions():
     analyses = get_storage().list_analyses(limit=1000)
     divs = set()
     for a in analyses:
-        d = _get_analysis_division(a)
-        if d and d != "GLOBAL":
-            divs.add(d)
+        for d in _analysis_divisions(a):
+            if d and d != "GLOBAL":
+                divs.add(d)
     return jsonify(sorted(divs))
