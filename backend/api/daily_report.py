@@ -6,26 +6,29 @@ FORMAT EXACT identique au fichier client ABA_LUX_Monitoring.xlsx :
   Couleurs : OK=vert | TBC=orange | KO=rouge
   Structure : 1 onglet par jour nommé "JJ-MM-AAAA"
 
-LOGIQUE DIVISION :
-  - L'analyse est GLOBALE (pas de split lors du calcul)
-  - La division est stockée dans l'analyse (summary.division)
-  - Pour le rapport par division : on filtre les ANALYSES (pas les lignes)
-  - Chaque analyse porte une division → 1 fichier Excel par division/client
+LOGIQUE PAYS (mapping client ABA — source de vérité utilisateur) :
+   - L'analyse est GLOBALE (pas de split lors du calcul)
+   - Le pays est déduit des codes stockés dans summary.division(s_found)
+     via OU_COUNTRY_MAP / LEGACY_BUCKET_COUNTRY (voir tables ci-dessous)
+   - Pour le rapport par pays : on filtre les ANALYSES (pas les lignes)
+   - Une analyse multi-pays apparaît dans chaque fichier concerné
+   - Code inconnu/GLOBAL → bucket "Autre / Non classé" (visible + loggé)
 
 Routes :
-  GET /api/report/daily              → rapport du jour (toutes analyses)
-  GET /api/report/daily?division=KWT → rapport Koweït uniquement
-  GET /api/report/by-division        → ZIP : 1 fichier Excel par division
-  GET /api/report/monthly            → rapport mensuel (1 onglet/jour)
-  GET /api/report/divisions          → liste divisions disponibles
+   GET /api/report/daily              → rapport du jour (toutes analyses)
+   GET /api/report/daily?division=KWT → rapport Koweït uniquement
+   GET /api/report/by-division        → ZIP : 1 fichier Excel par pays
+   GET /api/report/monthly            → rapport mensuel (1 onglet/jour)
+   GET /api/report/divisions          → liste pays disponibles
 """
 from __future__ import annotations
-import io, zipfile
+import io, zipfile, logging
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, send_file
 from api.auth import require_auth
 from storage import get_storage
-from engine.division_splitter import detect_division_from_value
+
+log = logging.getLogger(__name__)
 
 report_bp = Blueprint("report", __name__)
 
@@ -50,20 +53,38 @@ C_WHITE  = "FFFFFFFF"
 C_BLACK  = "FF000000"
 C_GREY   = "FF595959"
 
-# ── Mapping divisions ─────────────────────────────────────────────────
-# Détection : table canonique engine/division_splitter.py (OU_CODE_MAP +
-# TEXT_KEYWORDS, dérivée d'OPERATING_UNIT_CODE). Affichage : noms clients.
-DIV_LABELS = {
-    "DOHA": "🇶🇦 ABA Luxury Doha",
-    "KWT":  "🇰🇼 ABA WATCHES AND JEWELRY Luxury Kuwait",
-    "SPG":  "🇸🇬 Sports Gate Technogym (PSG)",
-    "KSA":  "🇸🇦 Platinum Sand KSA (PSC KSA)",
-    "GLOBAL":"Toutes divisions",
+# ── Mapping pays ──────────────────────────────────────────────────────
+# SOURCE DE VÉRITÉ : documentation client ABA (fournie par l'utilisateur).
+# OPERATING_UNIT_CODE → pays. Plusieurs BU par pays ; aucune autre valeur
+# n'existe pour l'instant — tout le reste va dans AUTRE.
+OU_COUNTRY_MAP = {
+    # Qatar
+    "SPG": "QATAR", "LUX": "QATAR", "LNH": "QATAR",
+    "FRT": "QATAR", "ISM": "QATAR", "DID": "QATAR",
+    # Koweït
+    "RMK": "KUWAIT", "KLD": "KUWAIT",
+    # KSA
+    "PSC": "KSA",
+}
+COUNTRY_LABELS = {
+    "QATAR":  "🇶🇦 Qatar",
+    "KUWAIT": "🇰🇼 Kuwait",
+    "KSA":    "🇸🇦 KSA",
+}
+AUTRE       = "AUTRE"
+AUTRE_LABEL = "❔ Autre / Non classé"
+
+# Les résumés d'analyses ne stockent PAS les OPERATING_UNIT_CODE bruts :
+# ils contiennent la sortie de l'ancien détecteur (buckets LUX/KWT/KSA/
+# DOHA/DAW7A/SPG). Traduction bucket historique → pays, établie sur les
+# données réelles (LUX regroupait les OU LUX/FRT/LNH, tous Qatar).
+LEGACY_BUCKET_COUNTRY = {
+    "LUX":   "QATAR", "DOHA": "QATAR", "DAW7A": "QATAR", "SPG": "QATAR",
+    "KWT":   "KUWAIT",
+    "KSA":   "KSA",
 }
 
-# Alias d'affichage : le détecteur canonique émet "DAW7A" pour Qatar/Doha,
-# le vocabulaire client (frontend, rapports) est "DOHA".
-_DIV_ALIASES = {"DAW7A": "DOHA"}
+_FILENAME_BY_COUNTRY = {"QATAR": "qatar", "KUWAIT": "kuwait", "KSA": "ksa", AUTRE: "autre"}
 
 
 def _analysis_day(a: dict) -> str:
@@ -78,35 +99,33 @@ def _analysis_day(a: dict) -> str:
         return created.strftime("%Y-%m-%d")
     return str(created or "")[:10]
 
-def _normalize_div(div: str) -> str:
-    """Applique les alias d'affichage (DAW7A → DOHA)."""
-    d = (div or "").strip().upper()
-    return _DIV_ALIASES.get(d, d)
-
-
-def _analysis_divisions(a: dict) -> list:
+def _resolve_country_param(raw: str) -> str:
     """
-    Toutes les divisions d'une analyse — regroupement possible dans
-    plusieurs fichiers si l'analyse couvre plusieurs divisions.
+    Résout un paramètre ?division= en pays : accepte un pays
+    (QATAR/KUWAIT/KSA) ou un ancien code de division/bucket.
+    Valeur inconnue → AUTRE (filtre explicite sur le non-classé).
+    """
+    t = str(raw or "").strip().upper()
+    if t in COUNTRY_LABELS or t == AUTRE:
+        return t
+    return OU_COUNTRY_MAP.get(t) or LEGACY_BUCKET_COUNTRY.get(t) or AUTRE
 
-    Priorité : summary.division + summary.divisions_found (dérivés
-    d'OPERATING_UNIT_CODE à l'analyse via division_splitter) → label.
-    Retourne ["GLOBAL"] si rien de détecté.
+
+def analysis_countries(a: dict) -> set:
+    """
+    Pays d'une analyse, déduits des codes stockés dans son summary
+    (division + divisions_found — sortie historique de la détection OU).
+    Retourne {AUTRE} si rien de classable : jamais silencieusement perdue.
     """
     s = a.get("summary", {}) or {}
-    divs: list = []
-
-    def _add(raw) -> None:
-        d = _normalize_div(str(raw or ""))
-        if d and d != "GLOBAL" and d not in divs:
-            divs.append(d)
-
-    _add(s.get("division"))
-    for x in (s.get("divisions_found") or []):
-        _add(x)
-    if not divs:
-        _add(detect_division_from_value(a.get("label", "")) or "")
-    return divs or ["GLOBAL"]
+    countries: set = set()
+    for raw in [s.get("division"), *(s.get("divisions_found") or [])]:
+        token = str(raw or "").strip().upper()
+        if not token or token == "GLOBAL":
+            continue
+        c = OU_COUNTRY_MAP.get(token) or LEGACY_BUCKET_COUNTRY.get(token)
+        countries.add(c if c else AUTRE)
+    return countries or {AUTRE}
 
 
 # ── Helpers Excel ─────────────────────────────────────────────────────
@@ -246,7 +265,7 @@ def _write_legend_sheet(wb):
 
 # ── Construction d'un onglet journée ─────────────────────────────────
 
-def _build_sheet(ws, day_label: str, analyses: list, division_filter: str = ""):
+def _build_sheet(ws, day_label: str, analyses: list, subtitle: str = ""):
     """
     Construit un onglet complet pour une journée.
     Une ligne par analyse/flux.
@@ -262,8 +281,7 @@ def _build_sheet(ws, day_label: str, analyses: list, division_filter: str = ""):
     ws.freeze_panes = "A3"
 
     r = 1
-    div_label = DIV_LABELS.get(division_filter, division_filter) if division_filter else ""
-    title = f"  Flux Monitor — {day_label}" + (f" | {div_label}" if div_label else "")
+    title = f"  Flux Monitor — {day_label}" + (f" | {subtitle}" if subtitle else "")
     _write_title(ws, r, title)
     r += 1
     # Pass flux_id to header to show extra columns for CustomerBalance
@@ -376,15 +394,15 @@ def _build_comment(pair: dict, n_crit: int, n_warn: int, conc: float, label: str
 @require_auth
 def daily_report():
     """
-    Rapport du jour pour UNE division ou toutes.
+    Rapport du jour pour UN pays ou toutes.
     ?date=2026-04-13   (défaut = aujourd'hui)
-    ?division=KWT      (filtre par division)
+    ?division=KWT      (filtre — accepte pays QATAR/KUWAIT/KSA ou ancien code)
     ?flux_id=SALES     (filtre par flux)
     """
     if not OPENPYXL_OK:
         return jsonify({"error": "openpyxl non installé — pip install openpyxl"}), 500
 
-    division = request.args.get("division", "").upper().strip()
+    division = request.args.get("division", "").strip()
     flux_id  = request.args.get("flux_id", "").upper().strip()
     date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
 
@@ -397,15 +415,16 @@ def daily_report():
     all_a = get_storage().list_analyses(flux_id=flux_id or None, limit=1000)
     day_a = [a for a in all_a if _analysis_day(a) == date_str]
 
-    # Filtre par division si demandé
+    # Filtre par pays si demandé
+    country = ""
     if division:
-        division = _normalize_div(division)
-        day_a = [a for a in day_a if division in _analysis_divisions(a)]
+        country = _resolve_country_param(division)
+        day_a = [a for a in day_a if country in analysis_countries(a)]
 
     if not day_a:
         return jsonify({
             "error": f"Aucune analyse pour le {date_str}"
-                     + (f" (division {division})" if division else "")
+                     + (f" ({COUNTRY_LABELS.get(country, AUTRE_LABEL)})" if country else "")
         }), 404
 
     wb = Workbook()
@@ -413,10 +432,11 @@ def daily_report():
     day_label = target_date.strftime("%d-%m-%Y")
 
     ws = wb.create_sheet(title=day_label)
-    _build_sheet(ws, day_label, day_a, division_filter=division)
+    _build_sheet(ws, day_label, day_a,
+                 subtitle=COUNTRY_LABELS.get(country, AUTRE_LABEL) if country else "")
 
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-    fname = f"FluxMonitor_{date_str}{'_'+division if division else ''}.xlsx"
+    fname = f"FluxMonitor_{date_str}{'_' + _FILENAME_BY_COUNTRY.get(country, country) if country else ''}.xlsx"
     return send_file(buf, as_attachment=True, download_name=fname,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
@@ -425,17 +445,17 @@ def daily_report():
 @require_auth
 def report_by_division():
     """
-    Un fichier Excel par division → retourné dans un ZIP.
-    Chaque fichier ne contient que les analyses de sa division.
+    Un fichier Excel par pays → retourné dans un ZIP.
+    Chaque fichier ne contient que les analyses de son pays.
 
     ?date=2026-04-13
     ?flux_id=SALES  (optionnel)
 
     Génère par exemple :
-      FluxMonitor_KWT_2026-04-13.xlsx
-      FluxMonitor_KSA_2026-04-13.xlsx
-      FluxMonitor_SPG_2026-04-13.xlsx
-      FluxMonitor_DAW7A_2026-04-13.xlsx
+      rapport_qatar_2026-04-13.xlsx
+      rapport_kuwait_2026-04-13.xlsx
+      rapport_ksa_2026-04-13.xlsx
+      rapport_autre_2026-04-13.xlsx   ← analyses non classées (à surveiller)
     """
     if not OPENPYXL_OK:
         return jsonify({"error": "openpyxl non installé"}), 500
@@ -454,37 +474,44 @@ def report_by_division():
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
 
-    # Groupe les analyses par division — une analyse multi-divisions
-    # apparaît dans chaque fichier de division concerné
+    # Groupe les analyses par pays — une analyse multi-pays apparaît
+    # dans chaque fichier concerné ; le non-classé va dans AUTRE
     groups: dict[str, list] = {}
     for a in day_a:
-        for div in _analysis_divisions(a):
-            groups.setdefault(div, []).append(a)
+        for c in analysis_countries(a):
+            groups.setdefault(c, []).append(a)
+
+    if AUTRE in groups:
+        log.warning(
+            "[REPORT] %d analyse(s) non classée(s) le %s (codes inconnus du "
+            "mapping ABA) → fichier 'autre'",
+            len(groups[AUTRE]), date_str,
+        )
 
     day_label = target_date.strftime("%d-%m-%Y")
 
-    # Si une seule division → rapport simple (pas de ZIP)
+    # Si un seul pays → rapport simple (pas de ZIP)
     if len(groups) <= 1:
         return daily_report()
 
-    # Plusieurs divisions → ZIP
+    # Plusieurs pays → ZIP
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for div, analyses in sorted(groups.items()):
+        for country, analyses in sorted(groups.items()):
             wb = Workbook(); wb.remove(wb.active)
             ws = wb.create_sheet(title=day_label)
-            # Titre avec le nom de la division
-            _build_sheet(ws, f"{day_label} | {DIV_LABELS.get(div, div)}", analyses)
+            # Titre avec le libellé du pays
+            label = COUNTRY_LABELS.get(country, AUTRE_LABEL)
+            _build_sheet(ws, f"{day_label} | {label}", analyses)
             _write_legend_sheet(wb)
 
             buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-            # Noms des fichiers pour les clients
-            div_clean = DIV_LABELS.get(div, div).replace("🇰🇼 ","").replace("🇶🇦 ","").replace("🇸🇦 ","").replace("🇸🇬 ","").replace("🇱🇺 ","")
-            zf.writestr(f"report_{div.lower()}_{date_str}.xlsx", buf.read())
+            zf.writestr(f"rapport_{_FILENAME_BY_COUNTRY.get(country, country.lower())}_{date_str}.xlsx",
+                        buf.read())
 
     zip_buf.seek(0)
     return send_file(zip_buf, as_attachment=True,
-                     download_name=f"FluxMonitor_Divisions_{date_str}.zip",
+                     download_name=f"FluxMonitor_Pays_{date_str}.zip",
                      mimetype="application/zip")
 
 
@@ -494,14 +521,14 @@ def monthly_report():
     """
     Rapport mensuel — un onglet par jour.
     ?month=2026-04
-    ?division=KWT   (filtre par division)
+    ?division=KWT   (filtre — accepte pays QATAR/KUWAIT/KSA ou ancien code)
     ?flux_id=SALES  (filtre par flux)
     """
     if not OPENPYXL_OK:
         return jsonify({"error": "openpyxl non installé"}), 500
 
     month_str = request.args.get("month", datetime.now().strftime("%Y-%m"))
-    division  = request.args.get("division", "").upper().strip()
+    division  = request.args.get("division", "").strip()
     flux_id   = request.args.get("flux_id", "").upper().strip()
 
     try:
@@ -513,15 +540,15 @@ def monthly_report():
     wb = Workbook(); wb.remove(wb.active)
     sheets_created = 0
 
+    country = _resolve_country_param(division) if division else ""
     current = first_day
     while current.month == first_day.month and current <= datetime.now():
         date_str  = current.strftime("%Y-%m-%d")
         day_label = current.strftime("%d-%m-%Y")
 
         day_a = [a for a in all_a if _analysis_day(a) == date_str]
-        if division:
-            division_n = _normalize_div(division)
-            day_a = [a for a in day_a if division_n in _analysis_divisions(a)]
+        if country:
+            day_a = [a for a in day_a if country in analysis_countries(a)]
 
         if day_a:
             ws = wb.create_sheet(title=day_label)
@@ -536,7 +563,9 @@ def monthly_report():
     _write_legend_sheet(wb)
 
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-    fname = f"FluxMonitor_{month_str}{'_'+division if division else ''}.xlsx"
+    fname = (f"FluxMonitor_{month_str}"
+             + ('_' + _FILENAME_BY_COUNTRY.get(country, country.lower()) if country else '')
+             + ".xlsx")
     return send_file(buf, as_attachment=True, download_name=fname,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
@@ -544,11 +573,9 @@ def monthly_report():
 @report_bp.get("/api/report/divisions")
 @require_auth
 def list_divisions():
-    """Divisions disponibles dans les analyses stockées."""
+    """Pays présents dans les analyses stockées (mapping ABA)."""
     analyses = get_storage().list_analyses(limit=1000)
-    divs = set()
+    countries: set = set()
     for a in analyses:
-        for d in _analysis_divisions(a):
-            if d and d != "GLOBAL":
-                divs.add(d)
-    return jsonify(sorted(divs))
+        countries |= analysis_countries(a)
+    return jsonify(sorted(COUNTRY_LABELS.get(c, AUTRE_LABEL) for c in countries))
