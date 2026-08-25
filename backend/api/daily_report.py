@@ -426,7 +426,8 @@ def report_by_division():
     Deux modes :
       ?analysis_id=42   → les fichiers pays stockés pour CETTE analyse
                           (bouton "Rapport par division" de la page Analyse)
-      ?date=2026-04-13  → agrégat : tous les fichiers pays des analyses du jour
+      ?date=2026-04-13  → fusion des lignes de TOUTES les analyses du jour,
+                          groupées par pays (ex : Items + Sales le même jour)
 
     Chaque fichier = même structure que l'"Excel analyse"
     (Résumé / Rapport détaillé / Écarts), filtré sur les lignes dont
@@ -483,17 +484,48 @@ def report_by_division():
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
 
-    merged_paths: dict[str, str] = {}
-    for a in day_a:
-        for c, p in ((a.get("summary") or {}).get("country_excel_paths") or {}).items():
-            merged_paths.setdefault(c, p)   # première analyse trouvée par pays
+    # Fusionne les LIGNES de toutes les analyses du jour, par pays
+    from engine.country_detail_report import collect_day_rows, subset_stats
+    from engine.detailed_report import export_detailed_excel
 
-    if not merged_paths:
+    maps = [(a.get("id"), (a.get("summary") or {}).get("country_excel_paths") or {})
+            for a in day_a]
+    groups, skipped = collect_day_rows(maps)
+
+    if skipped:
+        log.warning(
+            "[REPORT] %d/%d analyse(s) du %s sans fichiers pays exploitables "
+            "(antérieures à la fonctionnalité ou fichiers absents) — ignorées : %s",
+            len(skipped), len(day_a), date_str, skipped,
+        )
+    if not groups:
         return jsonify({"error":
             f"Aucune analyse du {date_str} ne possède de rapport détaillé par "
             "pays stocké. Relancez une analyse pour l'obtenir."}), 404
 
-    return _send_country_files(merged_paths, date_str=date_str)
+    import os as _os
+    import tempfile as _tempfile
+
+    n_src = len(day_a) - len(skipped)
+    out_dir = _tempfile.mkdtemp(prefix=f"flux_pays_{date_str}_")
+    paths: dict[str, str] = {}
+    for country, rows in sorted(groups.items()):
+        fname = f"rapport_{_FILENAME_BY_COUNTRY.get(country, country.lower())}_{date_str}.xlsx"
+        fpath = _os.path.join(out_dir, fname)
+        try:
+            export_detailed_excel(
+                rows, subset_stats(rows),
+                f"{COUNTRY_LABELS.get(country, AUTRE_LABEL)} | {n_src} analyse(s)",
+                output_path=fpath,
+            )
+            paths[country] = fpath
+        except Exception as e:
+            log.warning("[REPORT] Échec fusion %s (non bloquant): %s", fname, e)
+
+    if not paths:
+        return jsonify({"error": "Fichiers de rapport introuvables sur le serveur"}), 404
+
+    return _send_country_files(paths, date_str=date_str)
 
 
 def _send_country_files(paths_by_country: dict[str, str], *, date_str: str):

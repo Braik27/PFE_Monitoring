@@ -86,6 +86,82 @@ def ou_of_merged_row(row) -> Optional[str]:
     return None
 
 
+def subset_stats(rows: list[dict]) -> dict[str, int]:
+    """
+    Compteurs affichés dans l'onglet Résumé, dérivés du sous-ensemble :
+    présence d'un numéro de ligne = la ligne venait de ce fichier.
+    """
+    return {
+        "nb_lignes_cegid":  sum(1 for r in rows if r.get("LIGNE_CEGID") is not None),
+        "nb_lignes_oracle": sum(1 for r in rows if r.get("LIGNE_ORACLE") is not None),
+    }
+
+
+def read_country_rows(xlsx_path: str) -> list[dict]:
+    """
+    Relit les lignes de l'onglet "Rapport détaillé" d'un fichier pays
+    stocké (même structure que l'Excel analyse).
+    Retourne une liste de dicts indexés par en-tête ; [] si absent.
+    """
+    from openpyxl import load_workbook
+
+    try:
+        wb = load_workbook(xlsx_path, read_only=True, data_only=True)
+    except Exception as e:
+        log.warning("[COUNTRY] Lecture impossible de %s : %s", xlsx_path, e)
+        return []
+
+    try:
+        if "Rapport détaillé" not in wb.sheetnames:
+            log.warning("[COUNTRY] %s : onglet 'Rapport détaillé' absent", xlsx_path)
+            return []
+        ws = wb["Rapport détaillé"]
+        it = ws.iter_rows(values_only=True)
+        headers = next(it, None)
+        if not headers:
+            return []
+        out: list[dict] = []
+        for raw in it:
+            if not any(v is not None and str(v) != "" for v in raw):
+                continue                      # ligne vide éventuelle
+            out.append(dict(zip(headers, raw)))
+        return out
+    finally:
+        wb.close()
+
+
+def collect_day_rows(
+    analysis_file_maps: list[tuple],
+) -> tuple[dict[str, list[dict]], list]:
+    """
+    Fusionne les lignes de TOUTES les analyses d'une journée, par pays.
+
+    Args:
+        analysis_file_maps: liste de (analysis_id, {pays: chemin_xlsx})
+                            — chemins bruts depuis summary.country_excel_paths.
+
+    Returns:
+        ({pays: [lignes de toutes les sources]}, [ids ignorés])
+        Une analyse est ignorée (loggée par l'appelant) si elle n'a pas de
+        fichiers stockés exploitables — jamais crash ni perte silencieuse.
+    """
+    import os
+
+    groups: dict[str, list[dict]] = {}
+    skipped: list = []
+
+    for aid, paths_map in analysis_file_maps:
+        avail = {c: p for c, p in (paths_map or {}).items()
+                 if p and os.path.exists(p)}
+        if not avail:
+            skipped.append(aid)
+            continue
+        for country, path in avail.items():
+            groups.setdefault(country, []).extend(read_country_rows(path))
+
+    return groups, skipped
+
+
 def build_country_reports(
     merged,
     report: list[dict],
@@ -139,17 +215,11 @@ def build_country_reports(
     os.makedirs(output_dir, exist_ok=True)
     paths: dict[str, str] = {}
     for country, rows in sorted(groups.items()):
-        # Stats affichées dans l'onglet Résumé : comptes dérivés du
-        # sous-ensemble (présence d'un numéro de ligne = venait du fichier)
-        subset_stats = {
-            "nb_lignes_cegid":  sum(1 for r in rows if r.get("LIGNE_CEGID") is not None),
-            "nb_lignes_oracle": sum(1 for r in rows if r.get("LIGNE_ORACLE") is not None),
-        }
         fname = f"rapport_{_FILENAME_BY_COUNTRY.get(country, country.lower())}_{date_str}.xlsx"
         fpath = os.path.join(output_dir, fname)
         try:
             export_detailed_excel(
-                rows, subset_stats, f"{flux_id}|{COUNTRY_LABELS.get(country, AUTRE_LABEL)}",
+                rows, subset_stats(rows), f"{flux_id}|{COUNTRY_LABELS.get(country, AUTRE_LABEL)}",
                 output_path=fpath,
             )
             paths[country] = fpath
