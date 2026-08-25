@@ -75,6 +75,40 @@ def _analysis_day(a: dict) -> str:
         return created.strftime("%Y-%m-%d")
     return str(created or "")[:10]
 
+
+def _created_key(a: dict):
+    """
+    Clé de tri temporel d'une analyse : epoch de created_at
+    (datetime natif ou chaîne ISO), 0 si absent/ilisible ;
+    départage par id croissant (dernière insertion).
+    """
+    c = a.get("created_at")
+    ts = 0.0
+    try:
+        if hasattr(c, "timestamp"):
+            ts = float(c.timestamp())
+        else:
+            s = str(c or "").strip()
+            if s:
+                ts = datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError, OSError):
+        ts = 0.0
+    return (ts, a.get("id") or 0)
+
+
+def _latest_per_flux(analyses: list[dict]) -> list[dict]:
+    """
+    Ne garde que l'analyse la PLUS RÉCENTE de chaque flux : un rerun du
+    même flux le même jour supplante les exécutions antérieures (ses
+    lignes remplacent les anciennes, elles ne se concatènent pas).
+    Les flux différents continuent tous de contribuer.
+    """
+    latest: dict[str, dict] = {}
+    for a in sorted(analyses, key=_created_key):
+        flux = (a.get("flux_id") or "").upper()
+        latest[flux] = a            # dernier du tri = le plus récent gagne
+    return list(latest.values())
+
 def _resolve_country_param(raw: str) -> str:
     """
     Résout un paramètre ?division= en pays : accepte un pays
@@ -427,7 +461,9 @@ def report_by_division():
       ?analysis_id=42   → les fichiers pays stockés pour CETTE analyse
                           (bouton "Rapport par division" de la page Analyse)
       ?date=2026-04-13  → fusion des lignes de TOUTES les analyses du jour,
-                          groupées par pays (ex : Items + Sales le même jour)
+                          groupées par pays (ex : Items + Sales le même jour).
+                          Un rerun du même flux supplante ses exécutions
+                          antérieures : seule la plus récente compte.
 
     Chaque fichier = même structure que l'"Excel analyse"
     (Résumé / Rapport détaillé / Écarts), filtré sur les lignes dont
@@ -484,19 +520,26 @@ def report_by_division():
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
 
-    # Fusionne les LIGNES de toutes les analyses du jour, par pays
+    # Reruns d'un même flux : seule la plus récente analyse contribue
+    kept = _latest_per_flux(day_a)
+    n_superseded = len(day_a) - len(kept)
+    if n_superseded:
+        log.info("[REPORT] %d analyse(s) supplantée(s) le %s (rerun d'un même "
+                 "flux — seule la plus récente contribue)", n_superseded, date_str)
+
+    # Fusionne les LIGNES des analyses retenues, par pays
     from engine.country_detail_report import collect_day_rows, subset_stats
     from engine.detailed_report import export_detailed_excel
 
     maps = [(a.get("id"), (a.get("summary") or {}).get("country_excel_paths") or {})
-            for a in day_a]
+            for a in kept]
     groups, skipped = collect_day_rows(maps)
 
     if skipped:
         log.warning(
             "[REPORT] %d/%d analyse(s) du %s sans fichiers pays exploitables "
             "(antérieures à la fonctionnalité ou fichiers absents) — ignorées : %s",
-            len(skipped), len(day_a), date_str, skipped,
+            len(skipped), len(kept), date_str, skipped,
         )
     if not groups:
         return jsonify({"error":
@@ -506,7 +549,7 @@ def report_by_division():
     import os as _os
     import tempfile as _tempfile
 
-    n_src = len(day_a) - len(skipped)
+    n_src = len(kept) - len(skipped)
     out_dir = _tempfile.mkdtemp(prefix=f"flux_pays_{date_str}_")
     paths: dict[str, str] = {}
     for country, rows in sorted(groups.items()):
