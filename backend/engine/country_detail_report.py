@@ -65,13 +65,47 @@ def country_of_ou(code) -> str:
     return OU_COUNTRY_MAP.get(c, AUTRE)
 
 
-def ou_of_merged_row(row) -> Optional[str]:
+# Noms de base possibles pour la colonne code organisation, selon le flux /
+# l'export source (SALES → INV_ORG_CODE, CUSTOMERBALANCE → OPERATING_UNIT_CODE,
+# ITEMS → INV_ORG_CODE d'après les logs historiques du détecteur).
+_OU_BASE_NAMES = ("OPERATING_UNIT_CODE", "INV_ORG_CODE",
+                  "ORGANIZATION_CODE", "OU_CODE")
+
+
+def _norm_col(name) -> str:
+    """Normalisation tolérante : majuscules, tout non-alphanumérique retiré."""
+    import re
+    return re.sub(r"[^A-Z0-9]", "", str(name).upper())
+
+
+def resolve_ou_columns(columns) -> list[str]:
     """
-    Extrait l'OPERATING_UNIT_CODE d'une ligne du merged.
-    Priorité côté Cegid (`_cegid`) puis Oracle (`_oracle`).
-    Retourne None si absent des deux côtés.
+    Trouve les colonnes porteuses du code OU dans un merged, par priorité :
+      <BASE>_CEGID > <BASE>_ORACLE > <BASE> nu
+    pour chaque nom de base. Le nom nu arrive quand la colonne n'existe
+    que d'un seul côté du outer merge (pandas ne suffixe que les
+    colonnes en collision). Retourne [] si rien d'exploitable.
     """
-    for col in ("OPERATING_UNIT_CODE_cegid", "OPERATING_UNIT_CODE_oracle"):
+    norm = {_norm_col(c): c for c in columns}
+    ordered: list[str] = []
+    for base in _OU_BASE_NAMES:
+        b = _norm_col(base)
+        for key in (f"{b}CEGID", f"{b}ORACLE", b):
+            col = norm.get(key)
+            if col and col not in ordered:
+                ordered.append(col)
+    return ordered
+
+
+def ou_of_merged_row(row, ou_cols=None) -> Optional[str]:
+    """
+    Extrait le code organisation d'une ligne du merged.
+    Priorité côté Cegid (`_cegid`) puis Oracle (`_oracle`) ; `ou_cols`
+    permet d'utiliser des colonnes résolues dynamiquement (noms alternatifs,
+    colonne non-suffixée). Retourne None si absent des deux côtés.
+    """
+    cols = ou_cols or ("OPERATING_UNIT_CODE_cegid", "OPERATING_UNIT_CODE_oracle")
+    for col in cols:
         val = row.get(col)
         if val is None:
             continue
@@ -197,11 +231,26 @@ def build_country_reports(
 
     from engine.detailed_report import export_detailed_excel
 
+    # Résolution UNE FOIS des colonnes porteuses du code OU (noms
+    # alternatifs selon le flux, colonne non-suffixée si présente d'un
+    # seul côté du merge)
+    ou_cols = resolve_ou_columns(merged.columns)
+    if not ou_cols:
+        log.warning(
+            "[COUNTRY] Aucune colonne code organisation dans le merged "
+            "(%d colonnes) — TOUTES les lignes iront en 'autre'. "
+            "Colonnes présentes : %s",
+            len(merged.columns), list(merged.columns)[:15],
+        )
+    else:
+        log.info("[COUNTRY] flux=%s — code organisation lu depuis : %s",
+                 flux_id, ou_cols)
+
     # Pays de chaque ligne — merged.iterrows() parcourt dans le même ordre
     # que build_detail_report a construit `report`.
     countries: list[str] = []
     for _, row in merged.iterrows():
-        countries.append(country_of_ou(ou_of_merged_row(row)))
+        countries.append(country_of_ou(ou_of_merged_row(row, ou_cols)))
 
     # Regroupement (une ligne = un seul pays)
     groups: dict[str, list[dict]] = {}

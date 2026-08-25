@@ -106,12 +106,17 @@ def apply_preprocessing(
                      "SERIAL_GENERATED", "SERIAL_LENGTH", "SERIAL_TYPE",
                      "SUPPLIER_REF", "ITEM_IMAGE", "ERR_MSG",
                      "CREATED_BY", "CREATION_DATE", "MODIFIED_DATE", "MODIFIED_BY"]
-        cols_to_drop_tech = [c for c in df.columns if c in [x.upper() for x in cols_tech]]
-        df_for_dedup = df.drop(columns=cols_to_drop_tech, errors="ignore")
-        # Exclure _LIGNE_FICHIER du test de doublon (garder la colonne dans le résultat)
-        dedup_subset = [c for c in df_for_dedup.columns if c not in _dedup_exclude]
+        # Exclues du test de doublon UNIQUEMENT — les colonnes restent dans
+        # le DataFrame (elles portent le code organisation utilisé par le
+        # rapport détaillé par pays ; les supprimer ici rendait ce rapport
+        # muet : toutes les lignes tombaient en 'autre').
+        tech_upper = {x.upper() for x in cols_tech}
+        dedup_subset = [
+            c for c in df.columns
+            if c not in _dedup_exclude and c.upper() not in tech_upper
+        ]
         n_before = len(df)
-        df = df_for_dedup.drop_duplicates(subset=dedup_subset, keep="first").copy()
+        df = df.drop_duplicates(subset=dedup_subset, keep="first").copy()
         log.info(
             "[PREPROC] flux=%s side=%s | dedup toutes colonnes métier : %d → %d lignes (--%d doublons)",
             flux_id, side, n_before, len(df), n_before - len(df)
