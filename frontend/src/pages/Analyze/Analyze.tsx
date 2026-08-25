@@ -349,14 +349,18 @@ function AnalysisResult({ data }: { data: AsyncJobResult }) {
     }
   }
 
-  // Télécharger rapport par division
+  // Télécharger rapports détaillés par pays (de cette analyse)
   const downloadByDivision = async () => {
+    if (!data.analysis_id) return
     try {
-      const res = await fetch('/api/report/by-division', { credentials: 'include' })
+      const res = await fetch(
+        `/api/report/by-division?analysis_id=${data.analysis_id}`,
+        { credentials: 'include' }
+      )
       const { blob, ext } = await guardDownload(res)
       const link = document.createElement('a')
       link.href  = URL.createObjectURL(blob)
-      link.download = `rapport_divisions_${new Date().toISOString().slice(0,10)}.${ext}`
+      link.download = `rapport_pays_${data.flux_id}_${data.analysis_id}.${ext}`
       link.click()
       URL.revokeObjectURL(link.href)
     } catch (e) {

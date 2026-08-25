@@ -54,37 +54,13 @@ C_BLACK  = "FF000000"
 C_GREY   = "FF595959"
 
 # ── Mapping pays ──────────────────────────────────────────────────────
-# SOURCE DE VÉRITÉ : documentation client ABA (fournie par l'utilisateur).
-# OPERATING_UNIT_CODE → pays. Plusieurs BU par pays ; aucune autre valeur
-# n'existe pour l'instant — tout le reste va dans AUTRE.
-OU_COUNTRY_MAP = {
-    # Qatar
-    "SPG": "QATAR", "LUX": "QATAR", "LNH": "QATAR",
-    "FRT": "QATAR", "ISM": "QATAR", "DID": "QATAR",
-    # Koweït
-    "RMK": "KUWAIT", "KLD": "KUWAIT",
-    # KSA
-    "PSC": "KSA",
-}
-COUNTRY_LABELS = {
-    "QATAR":  "🇶🇦 Qatar",
-    "KUWAIT": "🇰🇼 Kuwait",
-    "KSA":    "🇸🇦 KSA",
-}
-AUTRE       = "AUTRE"
-AUTRE_LABEL = "❔ Autre / Non classé"
-
-# Les résumés d'analyses ne stockent PAS les OPERATING_UNIT_CODE bruts :
-# ils contiennent la sortie de l'ancien détecteur (buckets LUX/KWT/KSA/
-# DOHA/DAW7A/SPG). Traduction bucket historique → pays, établie sur les
-# données réelles (LUX regroupait les OU LUX/FRT/LNH, tous Qatar).
-LEGACY_BUCKET_COUNTRY = {
-    "LUX":   "QATAR", "DOHA": "QATAR", "DAW7A": "QATAR", "SPG": "QATAR",
-    "KWT":   "KUWAIT",
-    "KSA":   "KSA",
-}
-
-_FILENAME_BY_COUNTRY = {"QATAR": "qatar", "KUWAIT": "kuwait", "KSA": "ksa", AUTRE: "autre"}
+# Source de vérité unique : engine/country_detail_report.py (mapping ABA
+# validé par le client). Importé ici pour les filtres et libellés des
+# rapports de synthèse.
+from engine.country_detail_report import (  # noqa: E402
+    OU_COUNTRY_MAP, COUNTRY_LABELS, AUTRE, AUTRE_LABEL,
+    LEGACY_BUCKET_COUNTRY, _FILENAME_BY_COUNTRY,
+)
 
 
 def _analysis_day(a: dict) -> str:
@@ -445,69 +421,106 @@ def daily_report():
 @require_auth
 def report_by_division():
     """
-    Un fichier Excel par pays → retourné dans un ZIP.
-    Chaque fichier ne contient que les analyses de son pays.
+    Rapport détaillé LIGNE par ligne, un fichier Excel par pays → ZIP.
 
-    ?date=2026-04-13
-    ?flux_id=SALES  (optionnel)
+    Deux modes :
+      ?analysis_id=42   → les fichiers pays stockés pour CETTE analyse
+                          (bouton "Rapport par division" de la page Analyse)
+      ?date=2026-04-13  → agrégat : tous les fichiers pays des analyses du jour
 
-    Génère par exemple :
+    Chaque fichier = même structure que l'"Excel analyse"
+    (Résumé / Rapport détaillé / Écarts), filtré sur les lignes dont
+    l'OPERATING_UNIT_CODE mappe vers ce pays. Génère par exemple :
       rapport_qatar_2026-04-13.xlsx
       rapport_kuwait_2026-04-13.xlsx
       rapport_ksa_2026-04-13.xlsx
-      rapport_autre_2026-04-13.xlsx   ← analyses non classées (à surveiller)
+      rapport_autre_2026-04-13.xlsx   ← lignes sans code reconnu (à surveiller)
+
+    Les fichiers sont générés à la fin de chaque analyse (worker) et stockés
+    dans le summary (country_excel_paths). Les analyses antérieures à cette
+    fonctionnalité n'en ont pas → erreur explicite.
     """
     if not OPENPYXL_OK:
         return jsonify({"error": "openpyxl non installé"}), 500
 
+    storage = get_storage()
+
+    # ── Mode 1 : une analyse précise ────────────────────────────────────────
+    analysis_id = request.args.get("analysis_id", "").strip()
+    if analysis_id:
+        try:
+            analysis_id = int(analysis_id)
+        except ValueError:
+            return jsonify({"error": "analysis_id invalide"}), 400
+
+        rec = storage.get_analysis(analysis_id)
+        if not rec:
+            return jsonify({"error": f"Analyse {analysis_id} introuvable"}), 404
+
+        paths_by_country: dict[str, str] = (rec.get("summary") or {}).get(
+            "country_excel_paths") or {}
+        if not paths_by_country:
+            return jsonify({"error":
+                "Aucun rapport détaillé par pays stocké pour cette analyse — "
+                "les analyses antérieures à cette fonctionnalité ne peuvent pas "
+                "être reconstruites. Relancez une analyse pour obtenir le détail "
+                "par pays."}), 404
+
+        return _send_country_files(paths_by_country,
+                                   date_str=(rec.get("created_at") or "")[:10])
+
+    # ── Mode 2 : toutes les analyses d'une journée ──────────────────────────
     date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
     flux_id  = request.args.get("flux_id", "").upper().strip()
 
     try:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+        datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         return jsonify({"error": "Format date invalide — AAAA-MM-JJ"}), 400
 
-    all_a = get_storage().list_analyses(flux_id=flux_id or None, limit=1000)
-    day_a = [a for a in all_a if _analysis_day(a) == date_str]
-
+    day_a = [a for a in storage.list_analyses(flux_id=flux_id or None, limit=1000)
+             if _analysis_day(a) == date_str]
     if not day_a:
         return jsonify({"error": f"Aucune analyse pour le {date_str}"}), 404
 
-    # Groupe les analyses par pays — une analyse multi-pays apparaît
-    # dans chaque fichier concerné ; le non-classé va dans AUTRE
-    groups: dict[str, list] = {}
+    merged_paths: dict[str, str] = {}
     for a in day_a:
-        for c in analysis_countries(a):
-            groups.setdefault(c, []).append(a)
+        for c, p in ((a.get("summary") or {}).get("country_excel_paths") or {}).items():
+            merged_paths.setdefault(c, p)   # première analyse trouvée par pays
 
-    if AUTRE in groups:
-        log.warning(
-            "[REPORT] %d analyse(s) non classée(s) le %s (codes inconnus du "
-            "mapping ABA) → fichier 'autre'",
-            len(groups[AUTRE]), date_str,
-        )
+    if not merged_paths:
+        return jsonify({"error":
+            f"Aucune analyse du {date_str} ne possède de rapport détaillé par "
+            "pays stocké. Relancez une analyse pour l'obtenir."}), 404
 
-    day_label = target_date.strftime("%d-%m-%Y")
+    return _send_country_files(merged_paths, date_str=date_str)
 
-    # Si un seul pays → rapport simple (pas de ZIP)
-    if len(groups) <= 1:
-        return daily_report()
 
-    # Plusieurs pays → ZIP
+def _send_country_files(paths_by_country: dict[str, str], *, date_str: str):
+    """Zippe (ou envoie seul) les fichiers Excel pays existants sur disque."""
+    import os
+
+    available = {c: p for c, p in paths_by_country.items() if p and os.path.exists(p)}
+    missing = sorted(set(paths_by_country) - set(available))
+    if missing:
+        log.warning("[REPORT] Fichiers pays manquants sur disque : %s", missing)
+    if not available:
+        return jsonify({"error": "Fichiers de rapport introuvables sur le serveur"}), 404
+
+    if AUTRE in available:
+        log.warning("[REPORT] Le rapport contient un fichier 'autre' "
+                    "(lignes sans OPERATING_UNIT_CODE reconnu)")
+
+    if len(available) == 1:
+        c, p = next(iter(available.items()))
+        return send_file(p, as_attachment=True,
+                         download_name=os.path.basename(p),
+                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for country, analyses in sorted(groups.items()):
-            wb = Workbook(); wb.remove(wb.active)
-            ws = wb.create_sheet(title=day_label)
-            # Titre avec le libellé du pays
-            label = COUNTRY_LABELS.get(country, AUTRE_LABEL)
-            _build_sheet(ws, f"{day_label} | {label}", analyses)
-            _write_legend_sheet(wb)
-
-            buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-            zf.writestr(f"rapport_{_FILENAME_BY_COUNTRY.get(country, country.lower())}_{date_str}.xlsx",
-                        buf.read())
+        for c, p in sorted(available.items()):
+            zf.write(p, os.path.basename(p))
 
     zip_buf.seek(0)
     return send_file(zip_buf, as_attachment=True,

@@ -410,6 +410,31 @@ def _run_analysis_worker(
                 except Exception as _e:
                     log.warning("[WORKER] Sauvegarde detailed_excel_path échouée: %s", _e)
 
+            # 8ter. Rapports détaillés PAR PAYS (détail ligne, mapping ABA)
+            country_excel_paths = {}
+            if merged is not None and detailed_report:
+                try:
+                    import os as _os2
+                    from engine.country_detail_report import build_country_reports
+                    country_excel_paths = build_country_reports(
+                        merged, detailed_report,
+                        flux_id=flux_id,
+                        stats=resultat.get("stats"),
+                        comparison_rules=_cr,
+                        output_dir=_os2.path.dirname(detailed_excel_path)
+                                   if detailed_excel_path else _os2.path.join(
+                                       _os2.path.dirname(_os2.dirname(__file__)), "reports"),
+                        date_str=datetime.utcnow().strftime("%Y-%m-%d"),
+                    )
+                    if country_excel_paths:
+                        storage.update_summary(analysis_id, {
+                            **local_summary,
+                            "detailed_excel_path": detailed_excel_path,
+                            "country_excel_paths": country_excel_paths,
+                        })
+                except Exception as _e:
+                    log.warning("[COUNTRY] Rapports par pays ignorés (non bloquant): %s", _e)
+
             log.info("[WORKER] Analyse sauvegardée id=%s blob=%s", analysis_id, blob_path)
 
             # 9. Envoyer alerte si seuils d'alert_threshold dépassés
