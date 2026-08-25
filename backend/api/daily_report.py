@@ -504,7 +504,7 @@ def report_by_division():
                 "par pays."}), 404
 
         return _send_country_files(paths_by_country,
-                                   date_str=(rec.get("created_at") or "")[:10])
+                                   date_str=_analysis_day(rec))
 
     # ── Mode 2 : toutes les analyses d'une journée ──────────────────────────
     date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
