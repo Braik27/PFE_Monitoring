@@ -791,7 +791,8 @@ def _build_timeline(rows, days=30, division_filter=""):
     from collections import defaultdict
     grouped = defaultdict(lambda: {"n": 0, "critiques": 0, "warnings": 0})
     for r in rows:
-        date = r.get("created_at", "")[:10]
+        created = r.get("created_at", "")
+        date = created.strftime("%Y-%m-%d") if hasattr(created, "strftime") else str(created)[:10]
         if not division_filter or division_filter in (r.get("label", "") or "").upper():
             g = grouped[date]
             g["n"] += 1
@@ -820,7 +821,8 @@ def _build_weekly(rows, weeks=4, division_filter=""):
         crit = 0
         warn = 0
         for r in rows:
-            rd = r.get("created_at", "")[:10]
+            created = r.get("created_at", "")
+            rd = created.strftime("%Y-%m-%d") if hasattr(created, "strftime") else str(created)[:10]
             if ws.strftime("%Y-%m-%d") <= rd <= we.strftime("%Y-%m-%d"):
                 if not division_filter or division_filter in (r.get("label", "") or "").upper():
                     n += 1

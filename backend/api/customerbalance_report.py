@@ -9,6 +9,17 @@ import io
 cb_bp = Blueprint("customerbalance_report", __name__)
 
 
+def _is_on_date(a: dict, date_str: str) -> bool:
+    """
+    created_at d'une analyse : datetime natif (MySQL local) OU chaîne ISO
+    (backend Azure) → True si elle tombe sur date_str (AAAA-MM-JJ),
+    sans TypeError ('datetime.datetime' object is not subscriptable).
+    """
+    c = a.get("created_at", "")
+    day = c.strftime("%Y-%m-%d") if hasattr(c, "strftime") else str(c or "")[:10]
+    return day == date_str
+
+
 @cb_bp.get("/api/customerbalance/report")
 @require_auth
 def customerbalance_report():
@@ -24,7 +35,7 @@ def customerbalance_report():
     all_a = get_storage().list_analyses(limit=200)
     day_a = [
         a for a in all_a
-        if a.get("created_at", "")[:10] == date_str
+        if _is_on_date(a, date_str)
         and any(kw in (a.get("flux_id", "") + a.get("flux_name", "")).upper()
                 for kw in ["CUSTOMER", "CUSTOMERBALANCE", "CB"])
     ]
@@ -74,7 +85,7 @@ def report_customerbalance_json():
     # Filtre par date ET par flux CustomerBalance
     day_a = [
         a for a in all_a
-        if a.get("created_at", "")[:10] == date_str
+        if _is_on_date(a, date_str)
         and any(kw in (a.get("flux_id", "") + a.get("flux_name", "")).upper()
                 for kw in ["CUSTOMER", "CUSTOMERBALANCE", "CB"])
     ]
@@ -150,7 +161,7 @@ def report_customerbalance_csv():
         # Filtre les analyses du jour pour CustomerBalance
         analyses = [
             a for a in all_a
-            if a.get("created_at", "")[:10] == date_str
+            if _is_on_date(a, date_str)
             and any(
                 kw in (a.get("flux_id", "") + a.get("flux_name", "") + ".." + a.get("label", "")).upper()
                 for kw in ["CUSTOMER", "CUSTOMERBALANCE", "CB"]

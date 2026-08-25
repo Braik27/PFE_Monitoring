@@ -18,6 +18,19 @@ from ai.llm_client import call_llm, strip_llm_error_prefix
 log = logging.getLogger("assistant")
 assistant_bp = Blueprint("assistant", __name__)
 
+
+def _fmt_dt(value, n=10):
+    """
+    created_at / updated_at : datetime natif (MySQL local) OU chaîne ISO
+    (backend Azure) → texte tronqué à n caractères, sans TypeError
+    ('datetime.datetime' object is not subscriptable).
+    """
+    if not value:
+        return ""
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d %H:%M:%S")[:n]
+    return str(value)[:n]
+
 SYSTEM_PROMPT = """Tu es un assistant intelligent intégré dans Flux Monitor, une plateforme de monitoring et réconciliation de flux ERP (Cegid ↔ Oracle) pour TimSoft.
 
 Tu aides les utilisateurs à :
@@ -111,7 +124,7 @@ def _get_cross_conversation_context(user_id: str, current_message: str) -> str:
         for r in rows:
             summary = r.get("summary", "")
             if summary and any(t in summary.lower() for t in relevant_topics):
-                date = r.get("updated_at", "")[:10] if r.get("updated_at") else ""
+                date = _fmt_dt(r.get("updated_at"))
                 snippets.append(f"• [{date}] {r.get('title')} : {summary[:200]}")
 
         if snippets:
@@ -164,7 +177,7 @@ def _get_context_data(user_message: str) -> dict:
                     "flux_id":     a.get("flux_id"),
                     "statut":      a.get("status"),
                     "n_critiques": a.get("n_critiques", 0),
-                    "cree_le":     a.get("created_at", "")[:16] if a.get("created_at") else "",
+                    "cree_le":     _fmt_dt(a.get("created_at"), 16),
                 }
                 for a in (alerts or [])[:10]
             ]
@@ -182,7 +195,7 @@ def _get_context_data(user_message: str) -> dict:
                         "id":      a.get("id"),
                         "flux_id": a.get("flux_id"),
                         "label":   a.get("label"),
-                        "date":    a.get("created_at", "")[:16] if a.get("created_at") else "",
+                        "date":    _fmt_dt(a.get("created_at"), 16),
                     }
                     for a in (analyses or [])[:5]
                 ],
@@ -198,7 +211,7 @@ def _get_context_data(user_message: str) -> dict:
                     "id":      a.get("id"),
                     "flux_id": a.get("flux_id"),
                     "label":   a.get("label"),
-                    "date":    a.get("created_at", "")[:16] if a.get("created_at") else "",
+                    "date":    _fmt_dt(a.get("created_at"), 16),
                 }
                 for a in (analyses or [])
             ]
